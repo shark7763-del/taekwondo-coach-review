@@ -452,14 +452,44 @@ const ADMIN_TABS=[
   {id:'a-class',  label:'班別設定', icon:'🏷️'},
   {id:'a-pay',    label:'薪資設定', icon:'⚙️'},
   {id:'a-records',label:'上課紀錄', icon:'📒'},
+  {id:'a-coach-eval',label:'教練考核', icon:'🎯'},
   {id:'a-settle', label:'薪資結算', icon:'🧮'},
   {id:'a-line',   label:'LINE回報', icon:'💬'},
   {id:'a-data',   label:'資料管理', icon:'💾'},
 ];
+const ROLE_PERMISSIONS={
+  '館長':{
+    tabs:ADMIN_TABS.map(t=>t.id),
+    actions:['viewSalaryTotal','manageSchedule','deleteSchedule','manageWeekly','confirmLeave','confirmSub','managePeople','manageClasses','managePay','manageRecords','viewCoachEval','settleSalary','lineSalary','manageData']
+  },
+  '主教練':{
+    tabs:['a-dash','a-sched','a-weekly','a-coach-eval','a-line'],
+    actions:['manageSchedule','manageWeekly','confirmLeave','viewCoachEval']
+  },
+  '次教練':{
+    tabs:['a-dash'],
+    actions:[]
+  },
+  '助教':{
+    tabs:[],
+    actions:[]
+  }
+};
+function currentRole(){ return MODE==='admin' ? '館長' : (personByName(CURRENT_PERSON)?.role || '助教'); }
+function rolePerm(){ return ROLE_PERMISSIONS[currentRole()] || ROLE_PERMISSIONS['助教']; }
+function hasPerm(action){ return currentRole()==='館長' || rolePerm().actions.includes(action); }
+function requirePerm(action, msg){ if(hasPerm(action)) return true; toast(msg||'此功能限授權管理者使用'); return false; }
+function tabsForCurrentUser(){
+  if(MODE==='admin') return ADMIN_TABS;
+  const allowed=new Set(rolePerm().tabs);
+  return [...COACH_TABS, ...ADMIN_TABS.filter(t=>allowed.has(t.id))];
+}
 function startApp(){
   $('#appWrap').style.display='block';
-  const tabs = MODE==='coach'?COACH_TABS:ADMIN_TABS;
-  $('#roleBadge').textContent = MODE==='coach' ? `${CURRENT_PERSON}（${personByName(CURRENT_PERSON)?.role||'教練'}）` : '館長模式';
+  const tabs = tabsForCurrentUser();
+  $('#roleBadge').textContent = MODE==='coach'
+    ? `${CURRENT_PERSON}（${currentRole()}）｜${rolePerm().tabs.length?'授權後台':'個人模式'}`
+    : '館長模式｜完整後台';
   $('#tabNav').innerHTML = tabs.map((t,i)=>
     `<button class="tab-btn${i===0?' active':''}" data-tab="${t.id}" onclick="switchTab('${t.id}')">${t.icon} ${t.label}</button>`).join('');
   $('#panels').innerHTML = tabs.map(t=>`<div class="tab-panel" id="panel-${t.id}"></div>`).join('');
@@ -467,6 +497,8 @@ function startApp(){
   window.scrollTo(0,0);
 }
 function switchTab(id){
+  const tabs=tabsForCurrentUser();
+  if(!tabs.some(t=>t.id===id)){ toast('沒有權限開啟此分頁'); id=tabs[0].id; }
   CURRENT_TAB=id;
   document.querySelectorAll('.tab-btn').forEach(b=>b.classList.toggle('active', b.dataset.tab===id));
   document.querySelectorAll('.tab-panel').forEach(p=>p.classList.remove('active'));
@@ -479,7 +511,7 @@ function renderTab(id){
     'c-today':renderCoachToday, 'c-week':renderCoachWeek, 'c-leave':renderCoachLeave,
     'c-review':renderReview, 'c-salary':renderCoachSalary,
     'a-dash':renderDash, 'a-sched':renderSched, 'a-weekly':renderWeekly, 'a-people':renderPeople,
-    'a-class':renderClasses, 'a-pay':renderPay, 'a-records':renderRecords, 'a-settle':renderSettle,
+    'a-class':renderClasses, 'a-pay':renderPay, 'a-records':renderRecords, 'a-coach-eval':renderCoachEval, 'a-settle':renderSettle,
     'a-line':renderLine, 'a-data':renderData,
   }[id]||(()=>{}))();
 }
@@ -700,7 +732,13 @@ function renderCoachSalary(){
    課後復盤 KPI
 ========================================================= */
 const SIX=['教學設計','技術示範','班級控場','學生互動','安全管理','課後延續'];
-let reviewState={ scores:[3,3,3,3,3,3], quality:3, schedId:'' };
+const SELF_CHECK=[
+  ['prep','課前準備'],
+  ['punctual','準時到課'],
+  ['attitude','上課態度'],
+  ['reflection','課後反思']
+];
+let reviewState={ scores:[3,3,3,3,3,3], self:{prep:3,punctual:3,attitude:3,reflection:3}, quality:3, schedId:'' };
 function gotoReviewFor(schedId){ reviewState.schedId=schedId; switchTab('c-review'); }
 function renderReview(){
   const s=reviewState.schedId?DB.schedules.find(x=>x.id===reviewState.schedId):null;
@@ -717,7 +755,25 @@ function renderReview(){
       <div class="form-row"><label class="form-label">今日上課內容</label><textarea id="rv_content" class="form-textarea" placeholder="熱身 / 主課程 / 體能 / 技術 / 檢測">${s?esc(s.content||''):''}</textarea></div>
     </div>
   </div>
+  <div class="section"><div class="section-header"><div class="section-title">📘 備課與教學目標</div></div>
+    <div class="section-body">
+      <div class="form-row"><label class="form-label">本堂課核心目標（只寫 1-2 個）</label><textarea id="rv_goal" class="form-textarea" placeholder="例：前踢收腳速度、品勢轉身穩定度"></textarea></div>
+      <div class="form-row"><label class="form-label">課前備課重點 / 教法設計</label><textarea id="rv_plan" class="form-textarea" placeholder="例：先示範錯誤動作，再用分解練習修正"></textarea></div>
+      <div class="form-row"><label class="form-label">本堂預計觀察的學生或問題</label><textarea id="rv_focus" class="form-textarea" placeholder="例：新生注意力、黃帶組重心、容易受傷動作"></textarea></div>
+      <div class="form-row"><label class="form-label">上次改善事項是否有延續</label><textarea id="rv_follow" class="form-textarea" placeholder="例：上次說要縮短講解時間，今天用口令+示範控制在 2 分鐘內"></textarea></div>
+    </div>
+  </div>
   <div class="section"><div class="section-header"><div class="section-title">🛡️ 六維能力評分</div></div><div class="section-body" id="rv_six"></div></div>
+  <div class="section"><div class="section-header"><div class="section-title">🪞 教練自評</div></div>
+    <div class="section-body">
+      <div class="section-hint">自評不是為了扣分，是讓教練每天誠實看見自己的課前、課中、課後狀態。</div>
+      <div id="rv_self"></div>
+      <div class="form-row"><label class="form-label">課前準備自評說明</label><textarea id="rv_prep_note" class="form-textarea" placeholder="今天是否有先想好目標、流程、重點提醒？"></textarea></div>
+      <div class="form-row"><label class="form-label">準時與課前狀態說明</label><textarea id="rv_punctual_note" class="form-textarea" placeholder="是否提前到場？器材、場地、學生集合是否準備好？"></textarea></div>
+      <div class="form-row"><label class="form-label">上課態度自評說明</label><textarea id="rv_attitude_note" class="form-textarea" placeholder="今天是否有耐心、精神、尊重學生、保持標準？"></textarea></div>
+      <div class="form-row"><label class="form-label">課後反思自評說明</label><textarea id="rv_reflection_note" class="form-textarea" placeholder="課後是否有看見問題、提出修正、準備下次改法？"></textarea></div>
+    </div>
+  </div>
   <div class="section"><div class="section-header"><div class="section-title">⭐ 今日課程品質</div></div>
     <div class="section-body"><div class="score-row"><div class="score-row-top"><span class="score-name">課程品質分數</span><span class="score-pill" id="rv_qpill">3.0</span></div>
       <input type="range" min="1" max="5" step="0.5" value="3" oninput="reviewState.quality=+this.value;$('#rv_qpill').textContent=(+this.value).toFixed(1);calcReview()"></div></div>
@@ -736,7 +792,11 @@ function renderReview(){
     <div class="section-body">
       <div class="form-row"><label class="form-label">今日最成功的一件事 ✅</label><textarea id="rv_best" class="form-textarea"></textarea></div>
       <div class="form-row"><label class="form-label">最需要改善的一件事 ⚠️</label><textarea id="rv_worst" class="form-textarea"></textarea></div>
+      <div class="form-row"><label class="form-label">具體證據（學生反應 / 動作變化 / 課堂狀況）</label><textarea id="rv_evidence" class="form-textarea" placeholder="例：分組後等待時間變短；3 位學生能自己說出修正點"></textarea></div>
       <div class="form-row"><label class="form-label">下次只改一件事 🎯</label><textarea id="rv_next" class="form-textarea"></textarea></div>
+      <div class="form-row"><label class="form-label">下次課備課調整</label><textarea id="rv_next_plan" class="form-textarea" placeholder="例：把熱身改成反應遊戲，接到主課技術"></textarea></div>
+      <div class="form-row"><label class="form-label">下次量化追蹤指標</label><input id="rv_metric" class="form-input" placeholder="例：前踢連續 10 下收腳不落地；講解每段不超過 2 分鐘"></div>
+      <div class="form-row"><label class="form-label">是否需要館長 / 主教練協助</label><select id="rv_support" class="form-select"><option>不需要</option><option>需要觀課</option><option>需要協助設計課表</option><option>需要協助處理學生/家長</option></select></div>
     </div>
   </div>
   <div class="section"><div class="section-header"><div class="section-title">💾 儲存與 LINE</div></div>
@@ -749,21 +809,25 @@ function renderReview(){
       <div id="rv_report" class="result" style="margin-top:10px">填完後按儲存產生回報內容。</div>
     </div>
   </div>`;
-  reviewState.scores=[3,3,3,3,3,3]; reviewState.quality=3;
+  reviewState.scores=[3,3,3,3,3,3]; reviewState.self={prep:3,punctual:3,attitude:3,reflection:3}; reviewState.quality=3;
   $('#rv_six').innerHTML=SIX.map((n,i)=>`
     <div class="score-row"><div class="score-row-top"><span class="score-name">${n}</span><span class="score-pill" id="rv_s${i}">3</span></div>
       <input type="range" min="1" max="5" step="1" value="3" oninput="reviewState.scores[${i}]=+this.value;$('#rv_s${i}').textContent=this.value;calcReview()"></div>`).join('');
+  $('#rv_self').innerHTML=SELF_CHECK.map(([key,name])=>`
+    <div class="score-row"><div class="score-row-top"><span class="score-name">${name}</span><span class="score-pill" id="rv_self_${key}">3</span></div>
+      <input type="range" min="1" max="5" step="1" value="3" oninput="reviewState.self.${key}=+this.value;$('#rv_self_${key}').textContent=this.value;calcReview()"></div>`).join('');
   calcReview();
 }
 function calcReview(){
   const avg=reviewState.scores.reduce((a,b)=>a+b,0)/6;
-  const total=avg*0.7 + reviewState.quality*0.3;
+  const selfAvg=Object.values(reviewState.self).reduce((a,b)=>a+b,0)/4;
+  const total=avg*0.55 + reviewState.quality*0.25 + selfAvg*0.20;
   const pct=Math.round(total/5*100);
   let g='D'; if(total>=4.5)g='S'; else if(total>=4)g='A'; else if(total>=3.5)g='B'; else if(total>=2.5)g='C';
   $('#rv_total').textContent=total.toFixed(1); $('#rv_grade').textContent=g; $('#rv_pct').textContent=pct+'%';
   const max=SIX[reviewState.scores.indexOf(Math.max(...reviewState.scores))];
   const min=SIX[reviewState.scores.indexOf(Math.min(...reviewState.scores))];
-  $('#rv_words').innerHTML=`等級 <b style="color:var(--accent)">${g}</b>｜強項：${max}｜待加強：${min}`;
+  $('#rv_words').innerHTML=`等級 <b style="color:var(--accent)">${g}</b>｜強項：${max}｜待加強：${min}｜自評平均：${selfAvg.toFixed(1)}`;
   drawRadar();
 }
 function drawRadar(){
@@ -785,26 +849,131 @@ function reviewReport(){
 教練：${coach}
 日期：${date}（${weekdayOf(date)}）
 班別：${cls}
+課程目標：${$('#rv_goal').value||'—'}
+備課設計：${$('#rv_plan').value||'—'}
+觀察重點：${$('#rv_focus').value||'—'}
+上次延續：${$('#rv_follow').value||'—'}
 ─────────────
 總評：${total}/5（${g} 級）
 ${SIX.map((n,i)=>`・${n}：${reviewState.scores[i]}`).join('\n')}
 課程品質：${reviewState.quality}
+自評：
+${SELF_CHECK.map(([key,name])=>`・${name}：${reviewState.self[key]}`).join('\n')}
+課前準備說明：${$('#rv_prep_note').value||'—'}
+準時狀態說明：${$('#rv_punctual_note').value||'—'}
+上課態度說明：${$('#rv_attitude_note').value||'—'}
+課後反思說明：${$('#rv_reflection_note').value||'—'}
 ─────────────
 ✅ 最成功：${$('#rv_best').value||'—'}
 ⚠️ 待改善：${$('#rv_worst').value||'—'}
+📌 具體證據：${$('#rv_evidence').value||'—'}
 🎯 下次只改一件事：${$('#rv_next').value||'—'}
+📘 下次備課調整：${$('#rv_next_plan').value||'—'}
+📏 量化追蹤：${$('#rv_metric').value||'—'}
+🤝 協助需求：${$('#rv_support').value||'不需要'}
 以禮始，以禮終。`;
 }
 function saveReview(){
+  const required=[
+    ['rv_goal','請填寫本堂課核心目標'],
+    ['rv_plan','請填寫課前備課重點'],
+    ['rv_prep_note','請填寫課前準備自評說明'],
+    ['rv_punctual_note','請填寫準時與課前狀態說明'],
+    ['rv_attitude_note','請填寫上課態度自評說明'],
+    ['rv_reflection_note','請填寫課後反思自評說明'],
+    ['rv_best','請填寫今日最成功的一件事'],
+    ['rv_worst','請填寫最需要改善的一件事'],
+    ['rv_evidence','請填寫具體證據'],
+    ['rv_next','請填寫下次只改一件事'],
+    ['rv_metric','請填寫下次量化追蹤指標']
+  ];
+  for(const [id,msg] of required){ if(!$('#'+id).value.trim()){ toast(msg); $('#'+id).focus(); return; } }
   const rec={ id:uid(), date:$('#rv_date').value, coach:$('#rv_coach').value, className:$('#rv_class').value,
     count:$('#rv_count').value, content:$('#rv_content').value, scores:[...reviewState.scores], quality:reviewState.quality,
+    self:Object.assign({},reviewState.self), selfNotes:{
+      prep:$('#rv_prep_note').value,
+      punctual:$('#rv_punctual_note').value,
+      attitude:$('#rv_attitude_note').value,
+      reflection:$('#rv_reflection_note').value
+    },
     total:+$('#rv_total').textContent, grade:$('#rv_grade').textContent,
-    best:$('#rv_best').value, worst:$('#rv_worst').value, next:$('#rv_next').value, ts:Date.now() };
+    goal:$('#rv_goal').value, plan:$('#rv_plan').value, focus:$('#rv_focus').value, follow:$('#rv_follow').value,
+    best:$('#rv_best').value, worst:$('#rv_worst').value, evidence:$('#rv_evidence').value,
+    next:$('#rv_next').value, nextPlan:$('#rv_next_plan').value, metric:$('#rv_metric').value,
+    support:$('#rv_support').value, ts:Date.now() };
   DB.reviews.push(rec); save();
   $('#rv_report').textContent=reviewReport();
   toast('✅ 復盤已儲存');
 }
 function copyReview(){ const t=reviewReport(); $('#rv_report').textContent=t; copyText(t); }
+
+/* =========================================================
+   館長：教練考核 / 復盤追蹤
+========================================================= */
+function reviewsInMonth(m){ return DB.reviews.filter(r=>(r.date||'').slice(0,7)===m); }
+function completedCoachLessonsInMonth(name,m){
+  let count=0;
+  DB.schedules.forEach(s=>{ ensureEntries(s); if((s.date||'').slice(0,7)!==m) return;
+    count+=s.entries.filter(e=>e.person===name && e.completed).length;
+  });
+  return count;
+}
+function renderCoachEval(){
+  if(!requirePerm('viewCoachEval','教練考核限館長或主教練查看')) return;
+  const m=monthStr();
+  const monthReviews=reviewsInMonth(m);
+  const byCoach={};
+  activePeople().forEach(p=>byCoach[p.name]=[]);
+  monthReviews.forEach(r=>{ (byCoach[r.coach]=byCoach[r.coach]||[]).push(r); });
+  const low=monthReviews.filter(r=>r.total<3.5).sort((a,b)=>a.total-b.total);
+  const lowSelf=monthReviews.filter(r=>{
+    const vals=Object.values(r.self||{});
+    return vals.length && vals.reduce((a,b)=>a+b,0)/vals.length < 3.5;
+  });
+  const needs=monthReviews.filter(r=>r.support && r.support!=='不需要').slice().reverse();
+  $('#panel-a-coach-eval').innerHTML=`
+  <div class="section"><div class="section-header"><div class="section-title">🎯 教練考核總覽</div><span class="mini">${m}</span></div>
+    <div class="section-body">
+      <div class="note">館長看復盤時，重點不是責備，而是確認教練是否有備課、有證據、有下一次改善指標。</div>
+      <div class="dash-grid g3">
+        <div class="stat"><div class="num">${monthReviews.length}</div><div class="cap">本月復盤</div></div>
+        <div class="stat"><div class="num warn">${low.length}</div><div class="cap">低於 3.5</div></div>
+        <div class="stat"><div class="num warn">${lowSelf.length}</div><div class="cap">自評偏低</div></div>
+        <div class="stat"><div class="num blue">${needs.length}</div><div class="cap">需要協助</div></div>
+      </div>
+    </div>
+  </div>
+  <div class="section"><div class="section-header"><div class="section-title">📊 教練復盤完成率</div></div>
+    <div class="section-body">${Object.keys(byCoach).map(name=>{
+      const list=byCoach[name]||[];
+      const lessons=completedCoachLessonsInMonth(name,m);
+      const avg=list.length?list.reduce((a,r)=>a+r.total,0)/list.length:0;
+      const selfList=list.map(r=>Object.values(r.self||{})).filter(v=>v.length);
+      const selfAvg=selfList.length?selfList.flat().reduce((a,b)=>a+b,0)/selfList.flat().length:0;
+      const miss=Math.max(lessons-list.length,0);
+      const weak=list.length?SIX[list.flatMap(r=>r.scores||[]).reduce((min,_,i)=>i,0)]:'—';
+      const latest=list.slice().sort((a,b)=>b.ts-a.ts)[0];
+      return `<div class="list-item"><div class="li-top"><div class="li-name">${esc(name)}</div><span class="pill ${avg>=4?'pill-green':avg>=3.5?'pill-gold':list.length?'pill-red':'pill-gray'}">${list.length?avg.toFixed(1):'未復盤'}</span></div>
+        <div class="li-sub">已上課 ${lessons}｜已復盤 ${list.length}｜未復盤 ${miss}｜自評 ${selfAvg?selfAvg.toFixed(1):'—'}｜最近改善：${esc(latest?.next||'—')}</div></div>`;
+    }).join('')}</div>
+  </div>
+  <div class="section"><div class="section-header"><div class="section-title">⚠️ 館長需追蹤</div></div>
+    <div class="section-body">
+      ${low.length?low.map(r=>`<div class="list-item"><div class="li-top"><div class="li-name">${esc(r.coach)}｜${esc(r.date)}｜${esc(r.className)}</div><span class="pill pill-red">${r.total.toFixed(1)}</span></div>
+        <div class="li-sub">待改善：${esc(r.worst||'—')}｜下次：${esc(r.next||'—')}｜指標：${esc(r.metric||'—')}</div></div>`).join(''):'<div class="empty">目前沒有低分復盤</div>'}
+      ${lowSelf.length?`<div class="note" style="margin-top:10px">自評偏低<br>${lowSelf.map(r=>{
+        const vals=Object.values(r.self||{}); const avg=vals.reduce((a,b)=>a+b,0)/vals.length;
+        return `${esc(r.date)} ${esc(r.coach)}：自評 ${avg.toFixed(1)}，課前 ${r.self?.prep||'—'} / 準時 ${r.self?.punctual||'—'} / 態度 ${r.self?.attitude||'—'} / 反思 ${r.self?.reflection||'—'}`;
+      }).join('<br>')}</div>`:''}
+      ${needs.length?`<div class="note" style="margin-top:10px">需要協助<br>${needs.map(r=>`${esc(r.date)} ${esc(r.coach)}：${esc(r.support)}`).join('<br>')}</div>`:''}
+    </div>
+  </div>
+  <div class="section"><div class="section-header"><div class="section-title">📝 最新復盤內容</div></div>
+    <div class="section-body">${monthReviews.slice().sort((a,b)=>b.ts-a.ts).slice(0,12).map(r=>`
+      <div class="list-item"><div class="li-top"><div class="li-name">${esc(r.date)}｜${esc(r.coach)}｜${esc(r.className)}</div><span class="pill pill-gold">${esc(r.grade)}級 ${r.total.toFixed(1)}</span></div>
+      <div class="li-sub">目標：${esc(r.goal||'—')}｜自評：${Object.values(r.self||{}).length?(Object.values(r.self).reduce((a,b)=>a+b,0)/Object.values(r.self).length).toFixed(1):'—'}｜態度：${r.self?.attitude||'—'}｜反思：${r.self?.reflection||'—'}｜下次：${esc(r.next||'—')}</div></div>`).join('') || '<div class="empty">本月尚無復盤</div>'}</div>
+  </div>`;
+}
 
 /* =========================================================
    館長：今日總覽
@@ -819,6 +988,10 @@ function renderDash(){
   const monthNet=DB.salaryRecords.filter(r=>r.month===m).reduce((a,r)=>a+r.net,0);
   const pendingLeave=DB.leaveRequests.filter(l=>l.status==='請假待確認').length;
   const pendingSub=DB.substituteRecords.filter(s=>s.status==='待確認').length;
+  const canManageSchedule=hasPerm('manageSchedule');
+  const canConfirmLeave=hasPerm('confirmLeave');
+  const canConfirmSub=hasPerm('confirmSub');
+  const canViewSalaryTotal=hasPerm('viewSalaryTotal');
   $('#panel-a-dash').innerHTML=`
   <div class="section"><div class="section-header"><div class="section-title">🏠 今日總覽</div><span class="mini">${t}（${weekdayOf(t)}）</span></div>
     <div class="section-body"><div class="dash-grid g3">
@@ -826,21 +999,24 @@ function renderDash(){
       <div class="stat"><div class="num good">${doneEntries}/${totalEntries}</div><div class="cap">出席完成</div></div>
       <div class="stat"><div class="num warn">${pendingLeave+pendingSub}</div><div class="cap">待確認</div></div>
       <div class="stat"><div class="num blue">${DB.people.filter(x=>x.active).length}</div><div class="cap">在職人員</div></div>
-      <div class="stat"><div class="num">${DB.salaryRecords.filter(r=>r.month===m).length}</div><div class="cap">本月薪資筆</div></div>
-      <div class="stat"><div class="num money">$${fmtMoney(monthNet)}</div><div class="cap">本月薪資總額</div></div>
+      ${canViewSalaryTotal?`<div class="stat"><div class="num">${DB.salaryRecords.filter(r=>r.month===m).length}</div><div class="cap">本月薪資筆</div></div>
+      <div class="stat"><div class="num money">$${fmtMoney(monthNet)}</div><div class="cap">本月薪資總額</div></div>`:
+      `<div class="stat"><div class="num">—</div><div class="cap">薪資筆</div></div>
+      <div class="stat"><div class="num">—</div><div class="cap">薪資總額</div></div>`}
     </div></div>
   </div>
   <div class="section"><div class="section-header"><div class="section-title">📅 今日課程</div>
-    <button class="btn btn-gold btn-xs" onclick="switchTab('a-sched')">＋ 排班</button></div>
+    ${canManageSchedule?`<button class="btn btn-gold btn-xs" onclick="switchTab('a-sched')">＋ 排班</button>`:''}</div>
     <div class="section-body">${ today.length? today.map(s=>adminSchedRow(s)).join('') : '<div class="empty">今日尚無排班，可至「排班管理」或用固定週課表產生</div>' }</div>
   </div>
   ${(pendingLeave||pendingSub)?`<div class="section"><div class="section-header"><div class="section-title">⏳ 待確認</div></div>
     <div class="section-body">
-      ${DB.leaveRequests.filter(l=>l.status==='請假待確認').map(l=>`<div class="list-item"><div class="li-top"><div class="li-name">🙋 ${esc(l.originPerson)} 請假</div><button class="btn btn-green btn-xs" onclick="confirmLeave('${l.id}')">確認</button></div><div class="li-sub">${esc(l.date)}｜${esc(l.className)}｜${esc(l.reason||'')}</div></div>`).join('')}
-      ${DB.substituteRecords.filter(s=>s.status==='待確認').map(s=>`<div class="list-item"><div class="li-top"><div class="li-name">🔁 ${esc(s.subCoach)} 代班</div><button class="btn btn-blue btn-xs" onclick="confirmSub('${s.id}')">確認/加給</button></div><div class="li-sub">${esc(s.date)}｜${esc(s.className)}｜原：${esc(s.originCoach||'—')}</div></div>`).join('')}
+      ${DB.leaveRequests.filter(l=>l.status==='請假待確認').map(l=>`<div class="list-item"><div class="li-top"><div class="li-name">🙋 ${esc(l.originPerson)} 請假</div>${canConfirmLeave?`<button class="btn btn-green btn-xs" onclick="confirmLeave('${l.id}')">確認</button>`:'<span class="pill pill-orange">待館長/主教練</span>'}</div><div class="li-sub">${esc(l.date)}｜${esc(l.className)}｜${esc(l.reason||'')}</div></div>`).join('')}
+      ${DB.substituteRecords.filter(s=>s.status==='待確認').map(s=>`<div class="list-item"><div class="li-top"><div class="li-name">🔁 ${esc(s.subCoach)} 代班</div>${canConfirmSub?`<button class="btn btn-blue btn-xs" onclick="confirmSub('${s.id}')">確認/加給</button>`:'<span class="pill pill-orange">待館長確認</span>'}</div><div class="li-sub">${esc(s.date)}｜${esc(s.className)}｜原：${esc(s.originCoach||'—')}</div></div>`).join('')}
     </div></div>`:''}`;
 }
 function confirmLeave(id){
+  if(!requirePerm('confirmLeave','只有館長或主教練可以確認請假')) return;
   const l=DB.leaveRequests.find(x=>x.id===id);
   openModal('確認請假 / 指定代班', `
     <div class="mini">${esc(l.date)}｜${esc(l.className)}｜原排班：${esc(l.originPerson)}</div>
@@ -853,6 +1029,7 @@ function confirmLeave(id){
      {label:'取消',cls:'btn-ghost',fn:closeModal}]);
 }
 function confirmSub(id){
+  if(!requirePerm('confirmSub','只有館長可以確認代班加給')) return;
   const s=DB.substituteRecords.find(x=>x.id===id);
   openModal('確認代班 / 是否加給', `
     <div class="mini">${esc(s.date)}｜${esc(s.className)}｜代班：${esc(s.subCoach)}</div>
@@ -870,14 +1047,39 @@ function confirmSub(id){
    館長：排班管理
 ========================================================= */
 let schedFilterDate='';
+function timeOverlap(aStart,aEnd,bStart,bEnd){ return aStart < bEnd && bStart < aEnd; }
+function scheduleIssues(obj, excludeId){
+  const issues=[];
+  const assigned=[obj.mainCoach,obj.a1,obj.a2,obj.a3].filter(Boolean);
+  const dup=assigned.find((p,i)=>assigned.indexOf(p)!==i);
+  const klass=DB.classes.find(c=>c.name===obj.className);
+  const assistCount=[obj.a1,obj.a2,obj.a3].filter(Boolean).length;
+  if(!obj.mainCoach) issues.push('缺少主教練');
+  if(dup) issues.push(`${dup} 在同一堂課被重複安排`);
+  if(klass && assistCount < (+klass.assistantCount||0)) issues.push(`${obj.className} 預設需要 ${klass.assistantCount} 位助教，目前只有 ${assistCount} 位`);
+  assigned.forEach(name=>{ const p=personByName(name); if(p && !p.active) issues.push(`${name} 已停用，不應排班`); });
+  DB.schedules.forEach(s=>{
+    if(s.id===excludeId || s.date!==obj.date || s.status==='取消') return;
+    const others=[s.mainCoach,s.a1,s.a2,s.a3].filter(Boolean);
+    assigned.forEach(name=>{
+      if(others.includes(name) && timeOverlap(obj.start,obj.end,s.start,s.end)){
+        issues.push(`${name} 與 ${s.start}-${s.end} ${s.className} 撞班`);
+      }
+    });
+  });
+  return [...new Set(issues)];
+}
 function renderSched(){
+  if(!requirePerm('manageSchedule','只有館長或主教練可以管理排班')) return;
   DB.schedules.forEach(ensureEntries);
   if(!schedFilterDate) schedFilterDate=todayStr();
   const list=DB.schedules.filter(s=>!schedFilterDate||s.date===schedFilterDate).sort((a,b)=>(a.date+a.start).localeCompare(b.date+b.start));
+  const allIssues=DB.schedules.flatMap(s=>scheduleIssues(s,s.id).map(msg=>`${s.date} ${s.className}：${msg}`));
   $('#panel-a-sched').innerHTML=`
   <div class="section"><div class="section-header"><div class="section-title">📋 排班管理</div>
     <button class="btn btn-gold btn-xs" onclick="openSchedModal('')">＋ 新增排班</button></div>
     <div class="section-body">
+      ${allIssues.length?`<div class="note">⚠️ 排班提醒<br>${allIssues.slice(0,8).map(esc).join('<br>')}${allIssues.length>8?'<br>…':''}</div>`:''}
       <div class="form-grid">
         <div class="form-row"><label class="form-label">篩選日期</label><input type="date" class="form-input" value="${schedFilterDate}" onchange="schedFilterDate=this.value;renderSched()"></div>
         <div class="form-row"><label class="form-label">　</label><button class="btn btn-secondary btn-block" onclick="schedFilterDate='';renderSched()">顯示全部</button></div>
@@ -894,6 +1096,7 @@ function adminSchedRow(s, full){
   ensureEntries(s);
   const assist=[s.a1,s.a2,s.a3].filter(Boolean).join('、')||'—';
   const cls=s.status==='取消'?'cancel':'';
+  const canDelete=hasPerm('deleteSchedule');
   return `<div class="card ${cls}">
     <div class="card-top">
       <div><div class="card-time">${esc(s.start)}–${esc(s.end)}</div><div class="card-class">${esc(s.className)} ${s.temp?'<span class="pill pill-orange">臨時</span>':''}</div></div>
@@ -903,11 +1106,12 @@ function adminSchedRow(s, full){
     ${full?`<div class="card-actions">
       <button class="btn btn-secondary btn-xs" onclick="openSchedModal('${s.id}')">✏️ 編輯</button>
       <button class="btn btn-secondary btn-xs" onclick="cancelSched('${s.id}')">🚫 取消課程</button>
-      <button class="btn btn-red btn-xs" onclick="delSched('${s.id}')">🗑️ 刪除</button>
+      ${canDelete?`<button class="btn btn-red btn-xs" onclick="delSched('${s.id}')">🗑️ 刪除</button>`:''}
     </div>`:''}
   </div>`;
 }
 function openSchedModal(id, temp){
+  if(!requirePerm('manageSchedule','只有館長或主教練可以新增或編輯排班')) return;
   const s=id?DB.schedules.find(x=>x.id===id):null;
   const peopleOpts=v=>`<option value="">—</option>`+activePeople().map(p=>`<option ${v===p.name?'selected':''}>${esc(p.name)}</option>`).join('');
   const classOpts=DB.classes.map(c=>`<option ${s&&s.className===c.name?'selected':''}>${esc(c.name)}</option>`).join('');
@@ -932,6 +1136,8 @@ function openSchedModal(id, temp){
       const obj={ date, weekday:weekdayOf(date), className:$('#sd_class').value, start:$('#sd_start').value, end:$('#sd_end').value,
         mainCoach:$('#sd_main').value, a1:$('#sd_a1').value, a2:$('#sd_a2').value, a3:$('#sd_a3').value,
         content:$('#sd_content').value, payRole:$('#sd_payrole').value, status:$('#sd_status').value, note:$('#sd_note').value, temp:!!temp };
+      const issues=scheduleIssues(obj, s?s.id:null);
+      if(issues.length){ alert('排班異常，請先修正：\n\n'+issues.join('\n')); return; }
       if(s){ Object.assign(s,obj); delete s.entries; ensureEntries(s); }
       else { obj.id=uid(); DB.schedules.push(obj); ensureEntries(obj); }
       save(); closeModal(); toast('已儲存排班'); renderTab(CURRENT_TAB);
@@ -942,13 +1148,14 @@ function applySchedClass(){
   const c=DB.classes.find(x=>x.name===$('#sd_class').value); if(!c) return;
   $('#sd_start').value=c.start; $('#sd_end').value=c.end; if(c.mainCoach) $('#sd_main').value=c.mainCoach;
 }
-function cancelSched(id){ const s=DB.schedules.find(x=>x.id===id); s.status='取消'; ensureEntries(s); s.entries.forEach(e=>e.status='取消'); save(); toast('已取消課程（不計薪）'); renderTab(CURRENT_TAB); }
-function delSched(id){ confirmBox('確定刪除此排班？相關薪資紀錄不會自動刪除。',()=>{ DB.schedules=DB.schedules.filter(s=>s.id!==id); save(); toast('已刪除'); renderTab(CURRENT_TAB); }); }
+function cancelSched(id){ if(!requirePerm('manageSchedule','只有館長或主教練可以取消課程')) return; const s=DB.schedules.find(x=>x.id===id); s.status='取消'; ensureEntries(s); s.entries.forEach(e=>e.status='取消'); save(); toast('已取消課程（不計薪）'); renderTab(CURRENT_TAB); }
+function delSched(id){ if(!requirePerm('deleteSchedule','刪除排班限館長使用')) return; confirmBox('確定刪除此排班？相關薪資紀錄不會自動刪除。',()=>{ DB.schedules=DB.schedules.filter(s=>s.id!==id); save(); toast('已刪除'); renderTab(CURRENT_TAB); }); }
 
 /* =========================================================
    館長：固定週課表
 ========================================================= */
 function renderWeekly(){
+  if(!requirePerm('manageWeekly','只有館長或主教練可以管理固定週課表')) return;
   const byDay={}; ['週一','週二','週三','週四','週五','週六','週日'].forEach(w=>byDay[w]=[]);
   DB.weeklyTemplates.forEach(t=>{ (byDay[t.weekday]=byDay[t.weekday]||[]).push(t); });
   $('#panel-a-weekly').innerHTML=`
@@ -968,6 +1175,7 @@ function renderWeekly(){
   }).join('') || '<div class="empty">尚無固定週課表，點右上角新增</div>'}`;
 }
 function openWeeklyModal(id){
+  if(!requirePerm('manageWeekly','只有館長或主教練可以編輯固定週課表')) return;
   const t=id?DB.weeklyTemplates.find(x=>x.id===id):null;
   const peopleOpts=v=>`<option value="">—</option>`+activePeople().map(p=>`<option ${v===p.name?'selected':''}>${esc(p.name)}</option>`).join('');
   openModal(id?'✏️ 編輯固定課':'＋ 新增固定課', `
@@ -992,8 +1200,9 @@ function openWeeklyModal(id){
     }},{label:'取消',cls:'btn-ghost',fn:closeModal}]);
 }
 function applyWtClass(){ const c=DB.classes.find(x=>x.name===$('#wt_class').value); if(!c)return; $('#wt_start').value=c.start; $('#wt_end').value=c.end; if(c.mainCoach)$('#wt_main').value=c.mainCoach; }
-function delWeekly(id){ confirmBox('刪除此固定課？',()=>{ DB.weeklyTemplates=DB.weeklyTemplates.filter(t=>t.id!==id); save(); renderTab(CURRENT_TAB); }); }
+function delWeekly(id){ if(!requirePerm('manageWeekly','只有館長或主教練可以刪除固定課')) return; confirmBox('刪除此固定課？',()=>{ DB.weeklyTemplates=DB.weeklyTemplates.filter(t=>t.id!==id); save(); renderTab(CURRENT_TAB); }); }
 function genWeekFromTemplate(){
+  if(!requirePerm('manageWeekly','只有館長或主教練可以產生週排班')) return;
   const actives=DB.weeklyTemplates.filter(t=>t.active);
   if(!actives.length){ toast('尚無啟用的固定週課表'); return; }
   confirmBox('將依固定週課表為本週產生排班（已存在的同日同班別同時段會略過）。',()=>{
@@ -1016,6 +1225,7 @@ function genWeekFromTemplate(){
    館長：教練名單
 ========================================================= */
 function renderPeople(){
+  if(!requirePerm('managePeople','教練名單管理限館長使用')) return;
   $('#panel-a-people').innerHTML=`
   <div class="section"><div class="section-header"><div class="section-title">🧑‍🏫 教練與助教名單</div>
     <button class="btn btn-gold btn-xs" onclick="openPersonModal('')">＋ 新增</button></div>
@@ -1026,6 +1236,7 @@ function renderPeople(){
   </div>`;
 }
 function openPersonModal(id){
+  if(!requirePerm('managePeople','教練名單管理限館長使用')) return;
   const p=id?DB.people.find(x=>x.id===id):null;
   const roles=['館長','主教練','次教練','助教'];
   openModal(id?'✏️ 編輯人員':'＋ 新增人員', `
@@ -1043,12 +1254,13 @@ function openPersonModal(id){
       save(); closeModal(); toast('已儲存'); renderTab(CURRENT_TAB);
     }},{label:'取消',cls:'btn-ghost',fn:closeModal}]);
 }
-function delPerson(id){ confirmBox('刪除此人員？',()=>{ DB.people=DB.people.filter(p=>p.id!==id); save(); renderTab(CURRENT_TAB); }); }
+function delPerson(id){ if(!requirePerm('managePeople','教練名單管理限館長使用')) return; confirmBox('刪除此人員？',()=>{ DB.people=DB.people.filter(p=>p.id!==id); save(); renderTab(CURRENT_TAB); }); }
 
 /* =========================================================
    館長：班別設定
 ========================================================= */
 function renderClasses(){
+  if(!requirePerm('manageClasses','班別設定限館長使用')) return;
   $('#panel-a-class').innerHTML=`
   <div class="section"><div class="section-header"><div class="section-title">🏷️ 班別設定</div>
     <button class="btn btn-gold btn-xs" onclick="openClassModal('')">＋ 新增</button></div>
@@ -1059,6 +1271,7 @@ function renderClasses(){
   </div>`;
 }
 function openClassModal(id){
+  if(!requirePerm('manageClasses','班別設定限館長使用')) return;
   const c=id?DB.classes.find(x=>x.id===id):null;
   const peopleOpts=v=>`<option value="">—</option>`+activePeople().map(p=>`<option ${v===p.name?'selected':''}>${esc(p.name)}</option>`).join('');
   openModal(id?'✏️ 編輯班別':'＋ 新增班別', `
@@ -1077,12 +1290,13 @@ function openClassModal(id){
       save(); closeModal(); toast('已儲存'); renderTab(CURRENT_TAB);
     }},{label:'取消',cls:'btn-ghost',fn:closeModal}]);
 }
-function delClass(id){ confirmBox('刪除此班別？',()=>{ DB.classes=DB.classes.filter(c=>c.id!==id); save(); renderTab(CURRENT_TAB); }); }
+function delClass(id){ if(!requirePerm('manageClasses','班別設定限館長使用')) return; confirmBox('刪除此班別？',()=>{ DB.classes=DB.classes.filter(c=>c.id!==id); save(); renderTab(CURRENT_TAB); }); }
 
 /* =========================================================
    館長：薪資設定
 ========================================================= */
 function renderPay(){
+  if(!requirePerm('managePay','薪資設定限館長使用')) return;
   $('#panel-a-pay').innerHTML=`
   <div class="section"><div class="section-header"><div class="section-title">⚙️ 薪資設定</div>
     <button class="btn btn-gold btn-xs" onclick="openPayModal('')">＋ 新增項目</button></div>
@@ -1096,6 +1310,7 @@ function renderPay(){
   </div>`;
 }
 function openPayModal(id){
+  if(!requirePerm('managePay','薪資設定限館長使用')) return;
   const s=id?DB.salarySettings.find(x=>x.id===id):null;
   const types=['固定薪資','加給','扣款'];
   openModal(id?'✏️ 編輯薪資項目':'＋ 新增薪資項目', `
@@ -1119,12 +1334,13 @@ function openPayModal(id){
       save(); closeModal(); toast('已儲存'); renderTab(CURRENT_TAB);
     }},{label:'取消',cls:'btn-ghost',fn:closeModal}]);
 }
-function delPay(id){ confirmBox('刪除此薪資項目？',()=>{ DB.salarySettings=DB.salarySettings.filter(s=>s.id!==id); save(); renderTab(CURRENT_TAB); }); }
+function delPay(id){ if(!requirePerm('managePay','薪資設定限館長使用')) return; confirmBox('刪除此薪資項目？',()=>{ DB.salarySettings=DB.salarySettings.filter(s=>s.id!==id); save(); renderTab(CURRENT_TAB); }); }
 
 /* =========================================================
    館長：上課紀錄
 ========================================================= */
 function renderRecords(){
+  if(!requirePerm('manageRecords','上課與薪資紀錄管理限館長使用')) return;
   const recs=DB.salaryRecords.slice().sort((a,b)=>(b.date+b.id).localeCompare(a.date+a.id));
   $('#panel-a-records').innerHTML=`
   <div class="section"><div class="section-header"><div class="section-title">📒 上課 / 薪資紀錄</div></div>
@@ -1142,6 +1358,7 @@ function renderRecords(){
   </div>`;
 }
 function openSalaryRecModal(id){
+  if(!requirePerm('manageRecords','薪資紀錄調整限館長使用')) return;
   const r=DB.salaryRecords.find(x=>x.id===id);
   openModal('✏️ 調整薪資紀錄', `
     <div class="mini">${esc(r.date)}｜${esc(r.className)}｜${esc(r.personName)}</div>
@@ -1159,13 +1376,14 @@ function openSalaryRecModal(id){
       save(); closeModal(); toast('已更新'); renderTab(CURRENT_TAB);
     }},{label:'取消',cls:'btn-ghost',fn:closeModal}]);
 }
-function delSalaryRec(id){ confirmBox('刪除此薪資紀錄？',()=>{ DB.salaryRecords=DB.salaryRecords.filter(r=>r.id!==id); save(); renderTab(CURRENT_TAB); }); }
+function delSalaryRec(id){ if(!requirePerm('manageRecords','薪資紀錄刪除限館長使用')) return; confirmBox('刪除此薪資紀錄？',()=>{ DB.salaryRecords=DB.salaryRecords.filter(r=>r.id!==id); save(); renderTab(CURRENT_TAB); }); }
 
 /* =========================================================
    館長：薪資結算
 ========================================================= */
 let settleMonth='';
 function renderSettle(){
+  if(!requirePerm('settleSalary','薪資結算限館長使用')) return;
   if(!settleMonth) settleMonth=monthStr();
   const recs=DB.salaryRecords.filter(r=>r.month===settleMonth);
   const byPerson={}; recs.forEach(r=>{ (byPerson[r.personName]=byPerson[r.personName]||[]).push(r); });
@@ -1216,6 +1434,7 @@ function settleCard(name, recs, subs, leaves){
   </div>`;
 }
 function markPerson(name, status){
+  if(!requirePerm('settleSalary','薪資結算狀態限館長更新')) return;
   DB.salaryRecords.filter(r=>r.personName===name && r.month===settleMonth).forEach(r=>{ r.status=status; if(status==='已付款') r.paid=true; });
   save(); toast(name+' 已標記為「'+status+'」'); renderTab(CURRENT_TAB);
 }
@@ -1224,13 +1443,14 @@ function markPerson(name, status){
    館長：LINE 回報
 ========================================================= */
 function renderLine(){
+  const canLineSalary=hasPerm('lineSalary');
   $('#panel-a-line').innerHTML=`
   <div class="section"><div class="section-header"><div class="section-title">💬 LINE 回報文字</div></div>
     <div class="section-body">
       <div class="btn-row">
         <button class="btn btn-line btn-sm" onclick="showLine('today')">📅 今日排班</button>
         <button class="btn btn-line btn-sm" onclick="showLine('week')">🗓️ 本週排班</button>
-        <button class="btn btn-line btn-sm" onclick="showLine('salary')">💰 月底薪資</button>
+        ${canLineSalary?`<button class="btn btn-line btn-sm" onclick="showLine('salary')">💰 月底薪資</button>`:''}
       </div>
       <div id="lineOut" class="result" style="margin-top:12px">點上方按鈕產生 LINE 回報文字。</div>
       <div class="btns2" style="margin-top:10px">
@@ -1240,7 +1460,10 @@ function renderLine(){
     </div>
   </div>`;
 }
-function showLine(type){ $('#lineOut').textContent = type==='today'?lineToday() : type==='week'?lineWeek() : lineSalary(); }
+function showLine(type){
+  if(type==='salary' && !requirePerm('lineSalary','月底薪資 LINE 回報限館長使用')) return;
+  $('#lineOut').textContent = type==='today'?lineToday() : type==='week'?lineWeek() : lineSalary();
+}
 function lineToday(){
   const t=todayStr(); const list=DB.schedules.filter(s=>s.date===t&&s.status!=='取消').sort((a,b)=>a.start.localeCompare(b.start));
   let txt=`【雄麒道館｜今日排班】\n\n日期：${t.replace(/-/g,'/')}（${weekdayOf(t).slice(1)}）\n`;
@@ -1261,6 +1484,7 @@ function lineWeek(){
   return txt;
 }
 function lineSalary(){
+  if(!hasPerm('lineSalary')) return '此薪資回報限館長使用。';
   const m=settleMonth||monthStr();
   const recs=DB.salaryRecords.filter(r=>r.month===m);
   const subs=DB.substituteRecords.filter(s=>monthStr(s.date)===m);
@@ -1273,12 +1497,13 @@ function lineSalary(){
   txt+='\n若資料有誤，請於今晚前回覆。';
   return txt;
 }
-function lineSalaryReport(){ switchTab('a-line'); setTimeout(()=>showLine('salary'),60); }
+function lineSalaryReport(){ if(!requirePerm('lineSalary','月底薪資 LINE 回報限館長使用')) return; switchTab('a-line'); setTimeout(()=>showLine('salary'),60); }
 
 /* =========================================================
    館長：資料管理
 ========================================================= */
 function renderData(){
+  if(!requirePerm('manageData','資料管理限館長使用')) return;
   $('#panel-a-data').innerHTML=`
   <div class="section"><div class="section-header"><div class="section-title">💾 資料管理</div></div>
     <div class="section-body">
@@ -1309,8 +1534,9 @@ function renderData(){
     </div></div>
   </div>`;
 }
-function exportJSON(){ dl(new Blob([JSON.stringify(DB,null,2)],{type:'application/json'}), `雄麒道館備份_${todayStr()}.json`); toast('已匯出 JSON'); }
+function exportJSON(){ if(!requirePerm('manageData','資料匯出限館長使用')) return; dl(new Blob([JSON.stringify(DB,null,2)],{type:'application/json'}), `雄麒道館備份_${todayStr()}.json`); toast('已匯出 JSON'); }
 function importJSON(input){
+  if(!requirePerm('manageData','資料匯入限館長使用')){ input.value=''; return; }
   const f=input.files[0]; if(!f) return;
   const r=new FileReader();
   r.onload=e=>{ try{ const d=JSON.parse(e.target.result); DB=Object.assign(defaultDB(),d); save(); toast('✅ 匯入成功'); renderTab(CURRENT_TAB); }
@@ -1319,11 +1545,13 @@ function importJSON(input){
 }
 function csvCell(v){ v=String(v==null?'':v); return /[",\n]/.test(v)?'"'+v.replace(/"/g,'""')+'"':v; }
 function exportAllCSV(){
+  if(!requirePerm('manageData','排班 CSV 匯出限館長使用')) return;
   const head=['日期','星期','班別','開始','結束','主教練','助教1','助教2','助教3','課程內容','薪資身分','狀態','備註'];
   const rows=DB.schedules.map(s=>[s.date,s.weekday,s.className,s.start,s.end,s.mainCoach,s.a1,s.a2,s.a3,s.content,s.payRole,s.status,s.note]);
   dlCSV(head,rows,`排班_${todayStr()}.csv`);
 }
 function exportSalaryCSV(){
+  if(!requirePerm('settleSalary','薪資 CSV 匯出限館長使用')) return;
   const m=settleMonth||monthStr();
   const head=['日期','班別','人員','身分','基本薪資','加給','扣款','實領','狀態','備註'];
   const rows=DB.salaryRecords.filter(r=>!settleMonth||r.month===m).map(r=>[r.date,r.className,r.personName,r.role,r.base,r.bonus,r.deduct,r.net,r.status,r.note]);
@@ -1332,8 +1560,8 @@ function exportSalaryCSV(){
 function dlCSV(head,rows,name){ const csv=[head,...rows].map(r=>r.map(csvCell).join(',')).join('\r\n');
   dl(new Blob(['﻿'+csv],{type:'text/csv;charset=utf-8'}),name); toast('已匯出 CSV'); }
 function dl(blob,name){ const a=document.createElement('a'); a.href=URL.createObjectURL(blob); a.download=name; a.click(); setTimeout(()=>URL.revokeObjectURL(a.href),1000); }
-function changePw(){ const v=$('#newPw').value.trim(); if(!v){ toast('請輸入新密碼'); return; } DB.adminSettings.adminPw=v; save(); $('#newPw').value=''; toast('🔒 館長密碼已更新'); }
-function clearAll(){ confirmBox('⚠️ 確定清除所有資料？此動作無法復原（建議先匯出備份）。',()=>{ localStorage.removeItem(KEY); DB=defaultDB(); save(); toast('已清除，回到預設'); renderTab(CURRENT_TAB); }); }
+function changePw(){ if(!requirePerm('manageData','修改館長密碼限館長使用')) return; const v=$('#newPw').value.trim(); if(!v){ toast('請輸入新密碼'); return; } DB.adminSettings.adminPw=v; save(); $('#newPw').value=''; toast('🔒 館長密碼已更新'); }
+function clearAll(){ if(!requirePerm('manageData','清除所有資料限館長使用')) return; confirmBox('⚠️ 確定清除所有資料？此動作無法復原（建議先匯出備份）。',()=>{ localStorage.removeItem(KEY); DB=defaultDB(); save(); toast('已清除，回到預設'); renderTab(CURRENT_TAB); }); }
 
 /* =========================================================
    共用：Modal / 確認 / 複製 / LINE
