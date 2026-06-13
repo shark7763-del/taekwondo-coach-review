@@ -14,10 +14,12 @@ var SHEETS = {
   classes: 'Classes',
   contents: 'Contents',
   schedule: 'Schedule',
-  students: 'Students'
+  students: 'Students',
+  fullDb: 'FullDB'
 };
 var SCHEDULE_HEADERS = ['id', 'weekday', 'classType', 'start', 'end', 'coach', 'content'];
 var STUDENT_HEADERS = ['id', 'name', 'classType', 'active'];
+var FULLDB_HEADERS = ['key', 'updatedAt', 'json'];
 
 // Reviews 分頁的欄位：前面是可在 Sheet 直接看/篩的扁平欄，最後一欄 json 存完整物件
 var REVIEW_HEADERS = [
@@ -244,4 +246,40 @@ function importAllSrv(payloadJson) {
   if (p.students) saveStudentsSrv(p.students);
   if (p.reviews) { (p.reviews || []).forEach(function (r) { saveReviewSrv(r); }); }
   return 'ok';
+}
+
+/* ---------- 完整系統 DB 同步（給新版排班/薪資/復盤系統使用） ---------- */
+function getFullDbSrv() {
+  var sh = sheet_(SHEETS.fullDb, FULLDB_HEADERS);
+  var last = sh.getLastRow();
+  if (last < 2) return JSON.stringify({ updatedAt: 0, db: null });
+  var vals = sh.getRange(2, 1, last - 1, FULLDB_HEADERS.length).getValues();
+  for (var i = 0; i < vals.length; i++) {
+    if (vals[i][0] === 'hcps_db_v1') {
+      return JSON.stringify({
+        updatedAt: Number(vals[i][1] || 0),
+        db: vals[i][2] ? JSON.parse(vals[i][2]) : null
+      });
+    }
+  }
+  return JSON.stringify({ updatedAt: 0, db: null });
+}
+
+function saveFullDbSrv(payloadJson) {
+  var payload = (typeof payloadJson === 'string') ? JSON.parse(payloadJson) : payloadJson;
+  var sh = sheet_(SHEETS.fullDb, FULLDB_HEADERS);
+  var updatedAt = Number(payload.updatedAt || new Date().getTime());
+  var dbJson = JSON.stringify(payload.db || {});
+  var last = sh.getLastRow();
+  var found = 0;
+  if (last >= 2) {
+    var keys = sh.getRange(2, 1, last - 1, 1).getValues();
+    for (var i = 0; i < keys.length; i++) {
+      if (keys[i][0] === 'hcps_db_v1') { found = i + 2; break; }
+    }
+  }
+  var row = ['hcps_db_v1', updatedAt, dbJson];
+  if (found) sh.getRange(found, 1, 1, FULLDB_HEADERS.length).setValues([row]);
+  else sh.appendRow(row);
+  return JSON.stringify({ ok: true, updatedAt: updatedAt });
 }

@@ -361,7 +361,48 @@ function load(){
   try{ const raw=localStorage.getItem(KEY); if(raw){ const d=JSON.parse(raw); return Object.assign(defaultDB(), d); } }catch(e){}
   return defaultDB();
 }
-function save(){ localStorage.setItem(KEY, JSON.stringify(DB)); }
+function save(){
+  DB._updatedAt=Date.now();
+  localStorage.setItem(KEY, JSON.stringify(DB));
+  queueCloudSave();
+}
+const CLOUD_ON = typeof google!=='undefined' && google.script && google.script.run;
+let cloudSaveTimer=null, cloudBooted=false;
+function queueCloudSave(){
+  if(!CLOUD_ON || !cloudBooted) return;
+  clearTimeout(cloudSaveTimer);
+  cloudSaveTimer=setTimeout(()=>saveCloudNow(),650);
+}
+function saveCloudNow(){
+  if(!CLOUD_ON) return;
+  google.script.run
+    .withFailureHandler(()=>toast('已存本機，雲端同步失敗'))
+    .saveFullDbSrv(JSON.stringify({updatedAt:DB._updatedAt||Date.now(), db:DB}));
+}
+function initCloudSync(){
+  if(!CLOUD_ON) return;
+  google.script.run
+    .withSuccessHandler(raw=>{
+      cloudBooted=true;
+      try{
+        const payload=JSON.parse(raw||'{}');
+        const localAt=DB._updatedAt||0;
+        if(payload.db && (payload.updatedAt||0)>localAt){
+          DB=Object.assign(defaultDB(), payload.db);
+          localStorage.setItem(KEY, JSON.stringify(DB));
+          toast('☁️ 已載入雲端資料');
+          goHome();
+        }else if(!payload.db){
+          saveCloudNow();
+          toast('☁️ 已建立雲端同步');
+        }else{
+          toast('☁️ 雲端同步已啟用');
+        }
+      }catch(e){ toast('雲端資料讀取失敗，先使用本機資料'); }
+    })
+    .withFailureHandler(()=>{ cloudBooted=false; toast('雲端連線失敗，先使用本機資料'); })
+    .getFullDbSrv();
+}
 
 /* 薪資身分 / 狀態 */
 const PAY_ROLES = ['主教練','次教練','助教','獨立帶課','不計薪'];
@@ -1586,6 +1627,7 @@ function shareLine(t){ copyText(t); window.open('https://line.me/R/share?text='+
 
 /* 啟動 */
 goHome();
+initCloudSync();
 </script>
 </body>
 </html>
