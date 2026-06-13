@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-<title>雄麒道館｜教練排班薪資 KPI 系統</title>
+<title>雄麒道館｜教練排班 KPI 系統</title>
 <style>
 * { box-sizing:border-box; margin:0; padding:0; -webkit-tap-highlight-color:transparent; }
 :root{
@@ -231,17 +231,17 @@ input[type="range"]::-webkit-slider-thumb{ -webkit-appearance:none; appearance:n
   <div class="home-card">
     <div class="home-logo">🥋</div>
     <div class="home-brand">HSIUNG CHI DOJO</div>
-    <div class="home-title">雄麒道館<br>教練排班薪資 KPI 系統</div>
-    <div class="home-sub">排班管理｜上課確認｜薪資結算｜課後復盤</div>
+    <div class="home-title">雄麒道館<br>教練排班 KPI 系統</div>
+    <div class="home-sub">排班管理｜上課確認｜酬勞結算｜課後復盤</div>
     <div class="entry-btn entry-coach" onclick="openCoachPick()">
       <div class="entry-icon">🧑‍🏫</div>
       <div class="entry-name">教練 / 助教入口</div>
-      <div class="entry-desc">查看我的排班、完成上課、請假代班、查看薪資</div>
+      <div class="entry-desc">查看我的排班、完成上課、請假代班、查看酬勞</div>
     </div>
     <div class="entry-btn entry-admin" onclick="openAdminLogin()">
       <div class="entry-icon">🛡️</div>
       <div class="entry-name">館長管理後台</div>
-      <div class="entry-desc">排班管理、薪資設定、薪資結算、資料管理</div>
+      <div class="entry-desc">排班管理、酬勞設定、酬勞結算、資料管理</div>
     </div>
     <div class="home-spirit">以 禮 始 ・ 以 禮 終</div>
     <div id="homePreview" style="text-align:left"></div>
@@ -253,7 +253,7 @@ input[type="range"]::-webkit-slider-thumb{ -webkit-appearance:none; appearance:n
   <div class="home-card">
     <div class="home-logo">🧑‍🏫</div>
     <div class="home-title" style="font-size:20px">請選擇你的姓名</div>
-    <div class="home-sub">進入後只會看到你自己的排班與薪資</div>
+    <div class="home-sub">進入後只會看到你自己的排班與酬勞</div>
     <div class="name-grid" id="coachPickGrid"></div>
     <div class="back-link" onclick="goHome()">← 返回首頁</div>
   </div>
@@ -278,8 +278,8 @@ input[type="range"]::-webkit-slider-thumb{ -webkit-appearance:none; appearance:n
     <button class="role-switch" onclick="goHome()">🏠 首頁</button>
     <div class="logo">🥋</div>
     <div class="brand">雄麒道館</div>
-    <div class="title">教練排班薪資 KPI 系統</div>
-    <div class="subtitle">排班 · 上課 · 薪資 · 復盤</div>
+    <div class="title">教練排班 KPI 系統</div>
+    <div class="subtitle">排班 · 上課 · 酬勞 · 復盤</div>
     <span class="role-badge" id="roleBadge"></span>
   </header>
   <nav class="tab-nav" id="tabNav"></nav>
@@ -300,7 +300,7 @@ input[type="range"]::-webkit-slider-thumb{ -webkit-appearance:none; appearance:n
 
 <script>
 /* =========================================================
-   雄麒道館｜教練排班薪資 KPI 系統  (純前端 + localStorage)
+   雄麒道館｜教練排班 KPI 系統  (純前端 + localStorage)
 ========================================================= */
 const $ = s => document.querySelector(s);
 const esc = s => String(s==null?'':s).replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
@@ -340,10 +340,10 @@ function defaultDB(){
     leaveRequests:[],
     substituteRecords:[],
     salarySettings:[
-      { id:uid(), name:'助教',       amount:150, type:'固定薪資', active:true, payKey:'助教' },
-      { id:uid(), name:'次教練',     amount:200, type:'固定薪資', active:true, payKey:'次教練' },
-      { id:uid(), name:'主教練',     amount:300, type:'固定薪資', active:true, payKey:'主教練' },
-      { id:uid(), name:'獨立帶課',   amount:500, type:'固定薪資', active:true, payKey:'獨立帶課' },
+      { id:uid(), name:'助教',       amount:150, type:'固定酬勞', active:true, payKey:'助教' },
+      { id:uid(), name:'次教練',     amount:200, type:'固定酬勞', active:true, payKey:'次教練' },
+      { id:uid(), name:'主教練',     amount:300, type:'固定酬勞', active:true, payKey:'主教練' },
+      { id:uid(), name:'獨立帶課',   amount:500, type:'固定酬勞', active:true, payKey:'獨立帶課' },
       { id:uid(), name:'遲到扣款',   amount:100, type:'扣款',     active:true, payKey:'late' },
       { id:uid(), name:'臨時代班加給',amount:50,  type:'加給',     active:true, payKey:'sub' },
       { id:uid(), name:'特殊活動協助',amount:0,    type:'加給',     active:true, payKey:'' },
@@ -404,11 +404,11 @@ function initCloudSync(){
     .getFullDbSrv();
 }
 
-/* 薪資身分 / 狀態 */
-const PAY_ROLES = ['主教練','次教練','助教','獨立帶課','不計薪'];
+/* 酬勞身分 / 狀態 */
+const PAY_ROLES = ['主教練','次教練','助教','獨立帶課','不計酬'];
 const SCH_STATUS = ['已排班','已上課','請假','代班','遲到','取消'];
 function payBase(payRole){
-  const s = DB.salarySettings.find(x=>x.payKey===payRole && x.type==='固定薪資' && x.active);
+  const s = DB.salarySettings.find(x=>x.payKey===payRole && x.type==='固定酬勞' && x.active);
   if(s) return s.amount;
   return 0;
 }
@@ -483,7 +483,7 @@ const COACH_TABS=[
   {id:'c-week',  label:'本週排班', icon:'🗓️'},
   {id:'c-leave', label:'請假/代班', icon:'🔁'},
   {id:'c-review',label:'課後復盤', icon:'📝'},
-  {id:'c-salary',label:'我的薪資', icon:'💰'},
+  {id:'c-salary',label:'我的酬勞', icon:'💰'},
 ];
 const ADMIN_TABS=[
   {id:'a-dash',   label:'今日總覽', icon:'🏠'},
@@ -491,10 +491,10 @@ const ADMIN_TABS=[
   {id:'a-weekly', label:'固定週課表', icon:'🗓️'},
   {id:'a-people', label:'教練名單', icon:'🧑‍🏫'},
   {id:'a-class',  label:'班別設定', icon:'🏷️'},
-  {id:'a-pay',    label:'薪資設定', icon:'⚙️'},
+  {id:'a-pay',    label:'酬勞設定', icon:'⚙️'},
   {id:'a-records',label:'上課紀錄', icon:'📒'},
   {id:'a-coach-eval',label:'教練考核', icon:'🎯'},
-  {id:'a-settle', label:'薪資結算', icon:'🧮'},
+  {id:'a-settle', label:'酬勞結算', icon:'🧮'},
   {id:'a-line',   label:'LINE回報', icon:'💬'},
   {id:'a-data',   label:'資料管理', icon:'💾'},
 ];
@@ -648,7 +648,7 @@ function renderCoachToday(){
     <div class="section-body"><div class="dash-grid g3">
       <div class="stat"><div class="num">${list.length}</div><div class="cap">今日堂數</div></div>
       <div class="stat"><div class="num good">${done}</div><div class="cap">已完成</div></div>
-      <div class="stat"><div class="num blue">$${fmtMoney(money)}</div><div class="cap">今日薪資</div></div>
+      <div class="stat"><div class="num blue">$${fmtMoney(money)}</div><div class="cap">今日酬勞</div></div>
     </div></div>
   </div>
   <div style="margin:0 16px">${ list.length? list.map(s=>coachSchedCard(s,true)).join('') : '<div class="empty">今日沒有你的排班 🌙</div>' }</div>`;
@@ -741,7 +741,7 @@ function statusBadge(s){
 }
 
 /* =========================================================
-   教練端：我的薪資
+   教練端：我的酬勞
 ========================================================= */
 function renderCoachSalary(){
   const m=monthStr();
@@ -752,21 +752,21 @@ function renderCoachSalary(){
   const leaveCount=DB.leaveRequests.filter(l=>l.originPerson===CURRENT_PERSON && monthStr(l.date)===m).length;
   const total=recs.reduce((a,r)=>a+r.net,0);
   $('#panel-c-salary').innerHTML=`
-  <div class="section"><div class="section-header"><div class="section-title">💰 ${esc(CURRENT_PERSON)}的本月薪資</div><span class="mini">${m}</span></div>
+  <div class="section"><div class="section-header"><div class="section-title">💰 ${esc(CURRENT_PERSON)}的本月酬勞</div><span class="mini">${m}</span></div>
     <div class="section-body"><div class="dash-grid g3">
       <div class="stat"><div class="num">${lessons}</div><div class="cap">上課堂數</div></div>
       <div class="stat"><div class="num blue">${subCount}</div><div class="cap">代班堂數</div></div>
       <div class="stat"><div class="num warn">${lateCount}</div><div class="cap">遲到次數</div></div>
       <div class="stat"><div class="num">${leaveCount}</div><div class="cap">請假次數</div></div>
-      <div class="stat" style="grid-column:span 2"><div class="num money">$${fmtMoney(total)}</div><div class="cap">本月累積實領薪資</div></div>
+      <div class="stat" style="grid-column:span 2"><div class="num money">$${fmtMoney(total)}</div><div class="cap">本月累積實領酬勞</div></div>
     </div></div>
   </div>
-  <div class="section"><div class="section-header"><div class="section-title">📒 薪資明細</div></div>
+  <div class="section"><div class="section-header"><div class="section-title">📒 酬勞明細</div></div>
     <div class="section-body">${ recs.length? recs.slice().reverse().map(r=>`
       <div class="list-item"><div class="li-top"><div class="li-name">${esc(r.date)}｜${esc(r.className)}</div><div class="settle-net money">$${fmtMoney(r.net)}</div></div>
-      <div class="li-sub">${esc(r.role)}｜基本 $${fmtMoney(r.base)}${r.bonus?'｜加給 +$'+fmtMoney(r.bonus):''}${r.deduct?'｜扣款 -$'+fmtMoney(r.deduct):''}｜${esc(r.status)}${r.paid?'（已付款）':''}</div></div>`).join('') : '<div class="empty">本月尚無薪資紀錄，完成上課後會自動產生</div>' }</div>
+      <div class="li-sub">${esc(r.role)}｜基本 $${fmtMoney(r.base)}${r.bonus?'｜加給 +$'+fmtMoney(r.bonus):''}${r.deduct?'｜扣款 -$'+fmtMoney(r.deduct):''}｜${esc(r.status)}${r.paid?'（已付款）':''}</div></div>`).join('') : '<div class="empty">本月尚無酬勞紀錄，完成上課後會自動產生</div>' }</div>
   </div>
-  <div class="note">⚠️ 你只能看到自己的薪資；薪資設定與其他人薪資由館長後台管理。</div>`;
+  <div class="note">⚠️ 你只能看到自己的酬勞；酬勞設定與其他人酬勞由館長後台管理。</div>`;
 }
 
 /* =========================================================
@@ -1040,10 +1040,10 @@ function renderDash(){
       <div class="stat"><div class="num good">${doneEntries}/${totalEntries}</div><div class="cap">出席完成</div></div>
       <div class="stat"><div class="num warn">${pendingLeave+pendingSub}</div><div class="cap">待確認</div></div>
       <div class="stat"><div class="num blue">${DB.people.filter(x=>x.active).length}</div><div class="cap">在職人員</div></div>
-      ${canViewSalaryTotal?`<div class="stat"><div class="num">${DB.salaryRecords.filter(r=>r.month===m).length}</div><div class="cap">本月薪資筆</div></div>
-      <div class="stat"><div class="num money">$${fmtMoney(monthNet)}</div><div class="cap">本月薪資總額</div></div>`:
-      `<div class="stat"><div class="num">—</div><div class="cap">薪資筆</div></div>
-      <div class="stat"><div class="num">—</div><div class="cap">薪資總額</div></div>`}
+      ${canViewSalaryTotal?`<div class="stat"><div class="num">${DB.salaryRecords.filter(r=>r.month===m).length}</div><div class="cap">本月酬勞筆</div></div>
+      <div class="stat"><div class="num money">$${fmtMoney(monthNet)}</div><div class="cap">本月酬勞總額</div></div>`:
+      `<div class="stat"><div class="num">—</div><div class="cap">酬勞筆</div></div>
+      <div class="stat"><div class="num">—</div><div class="cap">酬勞總額</div></div>`}
     </div></div>
   </div>
   <div class="section"><div class="section-header"><div class="section-title">📅 今日課程</div>
@@ -1161,7 +1161,7 @@ function openSchedModal(id, temp){
       <div class="form-row"><label class="form-label">日期</label><input id="sd_date" type="date" class="form-input" value="${s?s.date:todayStr()}"></div>
       <div class="form-row"><label class="form-label">星期</label><input id="sd_weekday" class="form-input" value="${s?esc(s.weekday):weekdayOf(todayStr())}" readonly></div>
       <div class="form-row"><label class="form-label">班別</label><select id="sd_class" class="form-select" onchange="applySchedClass()">${classOpts}</select></div>
-      <div class="form-row"><label class="form-label">薪資身分</label><select id="sd_payrole" class="form-select">${PAY_ROLES.map(r=>`<option ${s&&s.payRole===r?'selected':''}>${r}</option>`).join('')}</select></div>
+      <div class="form-row"><label class="form-label">酬勞身分</label><select id="sd_payrole" class="form-select">${PAY_ROLES.map(r=>`<option ${s&&s.payRole===r?'selected':''}>${r}</option>`).join('')}</select></div>
       <div class="form-row"><label class="form-label">開始時間</label><input id="sd_start" type="time" class="form-input" value="${s?s.start:'18:00'}"></div>
       <div class="form-row"><label class="form-label">結束時間</label><input id="sd_end" type="time" class="form-input" value="${s?s.end:'19:30'}"></div>
       <div class="form-row"><label class="form-label">主教練</label><select id="sd_main" class="form-select">${peopleOpts(s?s.mainCoach:'')}</select></div>
@@ -1189,8 +1189,8 @@ function applySchedClass(){
   const c=DB.classes.find(x=>x.name===$('#sd_class').value); if(!c) return;
   $('#sd_start').value=c.start; $('#sd_end').value=c.end; if(c.mainCoach) $('#sd_main').value=c.mainCoach;
 }
-function cancelSched(id){ if(!requirePerm('manageSchedule','只有館長或主教練可以取消課程')) return; const s=DB.schedules.find(x=>x.id===id); s.status='取消'; ensureEntries(s); s.entries.forEach(e=>e.status='取消'); save(); toast('已取消課程（不計薪）'); renderTab(CURRENT_TAB); }
-function delSched(id){ if(!requirePerm('deleteSchedule','刪除排班限館長使用')) return; confirmBox('確定刪除此排班？相關薪資紀錄不會自動刪除。',()=>{ DB.schedules=DB.schedules.filter(s=>s.id!==id); save(); toast('已刪除'); renderTab(CURRENT_TAB); }); }
+function cancelSched(id){ if(!requirePerm('manageSchedule','只有館長或主教練可以取消課程')) return; const s=DB.schedules.find(x=>x.id===id); s.status='取消'; ensureEntries(s); s.entries.forEach(e=>e.status='取消'); save(); toast('已取消課程（不計酬）'); renderTab(CURRENT_TAB); }
+function delSched(id){ if(!requirePerm('deleteSchedule','刪除排班限館長使用')) return; confirmBox('確定刪除此排班？相關酬勞紀錄不會自動刪除。',()=>{ DB.schedules=DB.schedules.filter(s=>s.id!==id); save(); toast('已刪除'); renderTab(CURRENT_TAB); }); }
 
 /* =========================================================
    館長：固定週課表
@@ -1273,7 +1273,7 @@ function renderPeople(){
     <div class="section-body">${DB.people.map(p=>`
       <div class="list-item"><div class="li-top"><div class="li-name">${esc(p.name)} ${p.active?'':'<span class="pill pill-gray">停用</span>'}</div>
         <div class="li-actions"><button class="icon-btn" onclick="openPersonModal('${p.id}')">✏️</button><button class="icon-btn del" onclick="delPerson('${p.id}')">🗑️</button></div></div>
-      <div class="li-sub">身分：${esc(p.role)}｜薪資身分：${esc(p.payRole)}${p.note?'｜'+esc(p.note):''}</div></div>`).join('')||'<div class="empty">尚無人員</div>'}</div>
+      <div class="li-sub">身分：${esc(p.role)}｜酬勞身分：${esc(p.payRole)}${p.note?'｜'+esc(p.note):''}</div></div>`).join('')||'<div class="empty">尚無人員</div>'}</div>
   </div>`;
 }
 function openPersonModal(id){
@@ -1284,7 +1284,7 @@ function openPersonModal(id){
     <div class="form-row"><label class="form-label">姓名</label><input id="pe_name" class="form-input" value="${p?esc(p.name):''}"></div>
     <div class="form-grid">
       <div class="form-row"><label class="form-label">身分</label><select id="pe_role" class="form-select">${roles.map(r=>`<option ${p&&p.role===r?'selected':''}>${r}</option>`).join('')}</select></div>
-      <div class="form-row"><label class="form-label">預設薪資身分</label><select id="pe_pay" class="form-select">${PAY_ROLES.map(r=>`<option ${p&&p.payRole===r?'selected':''}>${r}</option>`).join('')}</select></div>
+      <div class="form-row"><label class="form-label">預設酬勞身分</label><select id="pe_pay" class="form-select">${PAY_ROLES.map(r=>`<option ${p&&p.payRole===r?'selected':''}>${r}</option>`).join('')}</select></div>
       <div class="form-row"><label class="form-label">是否啟用</label><select id="pe_active" class="form-select"><option value="1" ${!p||p.active?'selected':''}>啟用</option><option value="0" ${p&&!p.active?'selected':''}>停用</option></select></div>
     </div>
     <div class="form-row"><label class="form-label">備註</label><input id="pe_note" class="form-input" value="${p?esc(p.note||''):''}"></div>`,
@@ -1334,15 +1334,15 @@ function openClassModal(id){
 function delClass(id){ if(!requirePerm('manageClasses','班別設定限館長使用')) return; confirmBox('刪除此班別？',()=>{ DB.classes=DB.classes.filter(c=>c.id!==id); save(); renderTab(CURRENT_TAB); }); }
 
 /* =========================================================
-   館長：薪資設定
+   館長：酬勞設定
 ========================================================= */
 function renderPay(){
-  if(!requirePerm('managePay','薪資設定限館長使用')) return;
+  if(!requirePerm('managePay','酬勞設定限館長使用')) return;
   $('#panel-a-pay').innerHTML=`
-  <div class="section"><div class="section-header"><div class="section-title">⚙️ 薪資設定</div>
+  <div class="section"><div class="section-header"><div class="section-title">⚙️ 酬勞設定</div>
     <button class="btn btn-gold btn-xs" onclick="openPayModal('')">＋ 新增項目</button></div>
     <div class="section-body">
-      <div class="note">金額可自由調整，不寫死。固定薪資對應排班的「薪資身分」自動帶入；遲到扣款、代班加給在完成上課時自動計算。</div>
+      <div class="note">金額可自由調整，不寫死。固定酬勞對應排班的「酬勞身分」自動帶入；遲到扣款、代班加給在完成上課時自動計算。</div>
       ${DB.salarySettings.map(s=>`
       <div class="list-item"><div class="li-top"><div class="li-name">${esc(s.name)} <span class="pill ${s.type==='扣款'?'pill-red':s.type==='加給'?'pill-green':'pill-gold'}">${esc(s.type)}</span> ${s.active?'':'<span class="pill pill-gray">停用</span>'}</div>
         <div style="display:flex;align-items:center;gap:8px"><span class="money" style="font-size:16px">$${fmtMoney(s.amount)}</span>
@@ -1351,10 +1351,10 @@ function renderPay(){
   </div>`;
 }
 function openPayModal(id){
-  if(!requirePerm('managePay','薪資設定限館長使用')) return;
+  if(!requirePerm('managePay','酬勞設定限館長使用')) return;
   const s=id?DB.salarySettings.find(x=>x.id===id):null;
-  const types=['固定薪資','加給','扣款'];
-  openModal(id?'✏️ 編輯薪資項目':'＋ 新增薪資項目', `
+  const types=['固定酬勞','加給','扣款'];
+  openModal(id?'✏️ 編輯酬勞項目':'＋ 新增酬勞項目', `
     <div class="form-row"><label class="form-label">項目名稱</label><input id="ps_name" class="form-input" value="${s?esc(s.name):''}"></div>
     <div class="form-grid">
       <div class="form-row"><label class="form-label">金額</label><input id="ps_amt" type="number" class="form-input" value="${s?s.amount:0}"></div>
@@ -1362,12 +1362,12 @@ function openPayModal(id){
       <div class="form-row"><label class="form-label">是否啟用</label><select id="ps_active" class="form-select"><option value="1" ${!s||s.active?'selected':''}>啟用</option><option value="0" ${s&&!s.active?'selected':''}>停用</option></select></div>
       <div class="form-row"><label class="form-label">對應代號</label><select id="ps_key" class="form-select">
         <option value="">（無 / 自訂）</option>
-        ${['主教練','次教練','助教','獨立帶課'].map(k=>`<option value="${k}" ${s&&s.payKey===k?'selected':''}>${k}（固定薪資）</option>`).join('')}
+        ${['主教練','次教練','助教','獨立帶課'].map(k=>`<option value="${k}" ${s&&s.payKey===k?'selected':''}>${k}（固定酬勞）</option>`).join('')}
         <option value="late" ${s&&s.payKey==='late'?'selected':''}>late（遲到扣款）</option>
         <option value="sub" ${s&&s.payKey==='sub'?'selected':''}>sub（代班加給）</option>
       </select></div>
     </div>
-    <div class="section-hint">「對應代號」讓系統自動套用：主/次/助教/獨立帶課＝基本薪資；late＝遲到扣款；sub＝代班加給。自訂項目可留空。</div>`,
+    <div class="section-hint">「對應代號」讓系統自動套用：主/次/助教/獨立帶課＝基本酬勞；late＝遲到扣款；sub＝代班加給。自訂項目可留空。</div>`,
     [{label:'儲存',cls:'btn-primary',fn:()=>{
       const obj={ name:$('#ps_name').value.trim(), amount:+$('#ps_amt').value||0, type:$('#ps_type').value, active:$('#ps_active').value==='1', payKey:$('#ps_key').value };
       if(!obj.name){ toast('請輸入名稱'); return; }
@@ -1375,22 +1375,22 @@ function openPayModal(id){
       save(); closeModal(); toast('已儲存'); renderTab(CURRENT_TAB);
     }},{label:'取消',cls:'btn-ghost',fn:closeModal}]);
 }
-function delPay(id){ if(!requirePerm('managePay','薪資設定限館長使用')) return; confirmBox('刪除此薪資項目？',()=>{ DB.salarySettings=DB.salarySettings.filter(s=>s.id!==id); save(); renderTab(CURRENT_TAB); }); }
+function delPay(id){ if(!requirePerm('managePay','酬勞設定限館長使用')) return; confirmBox('刪除此酬勞項目？',()=>{ DB.salarySettings=DB.salarySettings.filter(s=>s.id!==id); save(); renderTab(CURRENT_TAB); }); }
 
 /* =========================================================
    館長：上課紀錄
 ========================================================= */
 function renderRecords(){
-  if(!requirePerm('manageRecords','上課與薪資紀錄管理限館長使用')) return;
+  if(!requirePerm('manageRecords','上課與酬勞紀錄管理限館長使用')) return;
   const recs=DB.salaryRecords.slice().sort((a,b)=>(b.date+b.id).localeCompare(a.date+a.id));
   $('#panel-a-records').innerHTML=`
-  <div class="section"><div class="section-header"><div class="section-title">📒 上課 / 薪資紀錄</div></div>
+  <div class="section"><div class="section-header"><div class="section-title">📒 上課 / 酬勞紀錄</div></div>
     <div class="section-body section-hint">由教練「完成上課」自動產生，可手動調整或刪除。</div>
     <div class="section-body" style="padding-top:0">${ recs.length? recs.map(r=>`
       <div class="list-item"><div class="li-top"><div class="li-name">${esc(r.date)}｜${esc(r.className)}</div>
         <div style="display:flex;align-items:center;gap:8px"><span class="money">$${fmtMoney(r.net)}</span>
         <div class="li-actions"><button class="icon-btn" onclick="openSalaryRecModal('${r.id}')">✏️</button><button class="icon-btn del" onclick="delSalaryRec('${r.id}')">🗑️</button></div></div></div>
-      <div class="li-sub">${esc(r.personName)}（${esc(r.role)}）｜基本 $${fmtMoney(r.base)}${r.bonus?'｜+$'+fmtMoney(r.bonus):''}${r.deduct?'｜-$'+fmtMoney(r.deduct):''}｜${esc(r.status)}${r.paid?'｜已付款':''}${r.note?'｜'+esc(r.note):''}</div></div>`).join('') : '<div class="empty">尚無薪資紀錄</div>' }</div>
+      <div class="li-sub">${esc(r.personName)}（${esc(r.role)}）｜基本 $${fmtMoney(r.base)}${r.bonus?'｜+$'+fmtMoney(r.bonus):''}${r.deduct?'｜-$'+fmtMoney(r.deduct):''}｜${esc(r.status)}${r.paid?'｜已付款':''}${r.note?'｜'+esc(r.note):''}</div></div>`).join('') : '<div class="empty">尚無酬勞紀錄</div>' }</div>
   </div>
   <div class="section"><div class="section-header"><div class="section-title">📝 課後復盤紀錄</div></div>
     <div class="section-body">${ DB.reviews.length? DB.reviews.slice().reverse().map(r=>`
@@ -1399,13 +1399,13 @@ function renderRecords(){
   </div>`;
 }
 function openSalaryRecModal(id){
-  if(!requirePerm('manageRecords','薪資紀錄調整限館長使用')) return;
+  if(!requirePerm('manageRecords','酬勞紀錄調整限館長使用')) return;
   const r=DB.salaryRecords.find(x=>x.id===id);
-  openModal('✏️ 調整薪資紀錄', `
+  openModal('✏️ 調整酬勞紀錄', `
     <div class="mini">${esc(r.date)}｜${esc(r.className)}｜${esc(r.personName)}</div>
     <div class="form-grid" style="margin-top:10px">
       <div class="form-row"><label class="form-label">身分</label><select id="sr_role" class="form-select">${PAY_ROLES.map(x=>`<option ${r.role===x?'selected':''}>${x}</option>`).join('')}</select></div>
-      <div class="form-row"><label class="form-label">基本薪資</label><input id="sr_base" type="number" class="form-input" value="${r.base}"></div>
+      <div class="form-row"><label class="form-label">基本酬勞</label><input id="sr_base" type="number" class="form-input" value="${r.base}"></div>
       <div class="form-row"><label class="form-label">加給</label><input id="sr_bonus" type="number" class="form-input" value="${r.bonus}"></div>
       <div class="form-row"><label class="form-label">扣款</label><input id="sr_deduct" type="number" class="form-input" value="${r.deduct}"></div>
       <div class="form-row"><label class="form-label">狀態</label><select id="sr_status" class="form-select">${['未結算','已結算','已付款'].map(x=>`<option ${r.status===x?'selected':''}>${x}</option>`).join('')}</select></div>
@@ -1417,14 +1417,14 @@ function openSalaryRecModal(id){
       save(); closeModal(); toast('已更新'); renderTab(CURRENT_TAB);
     }},{label:'取消',cls:'btn-ghost',fn:closeModal}]);
 }
-function delSalaryRec(id){ if(!requirePerm('manageRecords','薪資紀錄刪除限館長使用')) return; confirmBox('刪除此薪資紀錄？',()=>{ DB.salaryRecords=DB.salaryRecords.filter(r=>r.id!==id); save(); renderTab(CURRENT_TAB); }); }
+function delSalaryRec(id){ if(!requirePerm('manageRecords','酬勞紀錄刪除限館長使用')) return; confirmBox('刪除此酬勞紀錄？',()=>{ DB.salaryRecords=DB.salaryRecords.filter(r=>r.id!==id); save(); renderTab(CURRENT_TAB); }); }
 
 /* =========================================================
-   館長：薪資結算
+   館長：酬勞結算
 ========================================================= */
 let settleMonth='';
 function renderSettle(){
-  if(!requirePerm('settleSalary','薪資結算限館長使用')) return;
+  if(!requirePerm('settleSalary','酬勞結算限館長使用')) return;
   if(!settleMonth) settleMonth=monthStr();
   const recs=DB.salaryRecords.filter(r=>r.month===settleMonth);
   const byPerson={}; recs.forEach(r=>{ (byPerson[r.personName]=byPerson[r.personName]||[]).push(r); });
@@ -1433,7 +1433,7 @@ function renderSettle(){
   const names=Object.keys(byPerson);
   const grand=recs.reduce((a,r)=>a+r.net,0);
   $('#panel-a-settle').innerHTML=`
-  <div class="section"><div class="section-header"><div class="section-title">🧮 薪資結算</div></div>
+  <div class="section"><div class="section-header"><div class="section-title">🧮 酬勞結算</div></div>
     <div class="section-body">
       <div class="form-grid">
         <div class="form-row"><label class="form-label">月份</label><input type="month" class="form-input" value="${settleMonth}" onchange="settleMonth=this.value;renderSettle()"></div>
@@ -1441,11 +1441,11 @@ function renderSettle(){
       </div>
       <div class="btn-row">
         <button class="btn btn-secondary btn-sm" onclick="exportSalaryCSV()">📄 匯出本月 CSV</button>
-        <button class="btn btn-line btn-sm" onclick="lineSalaryReport()">💬 LINE 薪資回報</button>
+        <button class="btn btn-line btn-sm" onclick="lineSalaryReport()">💬 LINE 酬勞回報</button>
       </div>
     </div>
   </div>
-  <div style="margin:0 16px">${ names.length? names.map(n=>settleCard(n,byPerson[n],monthSubs,monthLeaves)).join('') : '<div class="empty">本月尚無薪資紀錄</div>' }</div>`;
+  <div style="margin:0 16px">${ names.length? names.map(n=>settleCard(n,byPerson[n],monthSubs,monthLeaves)).join('') : '<div class="empty">本月尚無酬勞紀錄</div>' }</div>`;
 }
 function personSummary(name, recs, subs, leaves){
   const cnt=role=>recs.filter(r=>r.role===role).length;
@@ -1475,7 +1475,7 @@ function settleCard(name, recs, subs, leaves){
   </div>`;
 }
 function markPerson(name, status){
-  if(!requirePerm('settleSalary','薪資結算狀態限館長更新')) return;
+  if(!requirePerm('settleSalary','酬勞結算狀態限館長更新')) return;
   DB.salaryRecords.filter(r=>r.personName===name && r.month===settleMonth).forEach(r=>{ r.status=status; if(status==='已付款') r.paid=true; });
   save(); toast(name+' 已標記為「'+status+'」'); renderTab(CURRENT_TAB);
 }
@@ -1491,7 +1491,7 @@ function renderLine(){
       <div class="btn-row">
         <button class="btn btn-line btn-sm" onclick="showLine('today')">📅 今日排班</button>
         <button class="btn btn-line btn-sm" onclick="showLine('week')">🗓️ 本週排班</button>
-        ${canLineSalary?`<button class="btn btn-line btn-sm" onclick="showLine('salary')">💰 月底薪資</button>`:''}
+        ${canLineSalary?`<button class="btn btn-line btn-sm" onclick="showLine('salary')">💰 月底酬勞</button>`:''}
       </div>
       <div id="lineOut" class="result" style="margin-top:12px">點上方按鈕產生 LINE 回報文字。</div>
       <div class="btns2" style="margin-top:10px">
@@ -1502,7 +1502,7 @@ function renderLine(){
   </div>`;
 }
 function showLine(type){
-  if(type==='salary' && !requirePerm('lineSalary','月底薪資 LINE 回報限館長使用')) return;
+  if(type==='salary' && !requirePerm('lineSalary','月底酬勞 LINE 回報限館長使用')) return;
   $('#lineOut').textContent = type==='today'?lineToday() : type==='week'?lineWeek() : lineSalary();
 }
 function lineToday(){
@@ -1525,20 +1525,20 @@ function lineWeek(){
   return txt;
 }
 function lineSalary(){
-  if(!hasPerm('lineSalary')) return '此薪資回報限館長使用。';
+  if(!hasPerm('lineSalary')) return '此酬勞回報限館長使用。';
   const m=settleMonth||monthStr();
   const recs=DB.salaryRecords.filter(r=>r.month===m);
   const subs=DB.substituteRecords.filter(s=>monthStr(s.date)===m);
   const leaves=DB.leaveRequests.filter(l=>monthStr(l.date)===m);
   const byPerson={}; recs.forEach(r=>{(byPerson[r.personName]=byPerson[r.personName]||[]).push(r);});
-  let txt=`【雄麒道館｜${+m.slice(5,7)}月教練助教薪資結算】\n`;
+  let txt=`【雄麒道館｜${+m.slice(5,7)}月教練助教酬勞結算】\n`;
   Object.keys(byPerson).forEach(n=>{ const s=personSummary(n,byPerson[n],subs,leaves);
     txt+=`\n${n}\n上課：${s.lessons}堂\n代班：${s.sub}堂\n遲到：${s.late}次\n請假：${s.leave}次\n實領：${fmtMoney(s.net)}元\n狀態：${s.paid?'已付款':'未付款'}\n`; });
-  if(!Object.keys(byPerson).length) txt+='\n本月尚無薪資資料。';
+  if(!Object.keys(byPerson).length) txt+='\n本月尚無酬勞資料。';
   txt+='\n若資料有誤，請於今晚前回覆。';
   return txt;
 }
-function lineSalaryReport(){ if(!requirePerm('lineSalary','月底薪資 LINE 回報限館長使用')) return; switchTab('a-line'); setTimeout(()=>showLine('salary'),60); }
+function lineSalaryReport(){ if(!requirePerm('lineSalary','月底酬勞 LINE 回報限館長使用')) return; switchTab('a-line'); setTimeout(()=>showLine('salary'),60); }
 
 /* =========================================================
    館長：資料管理
@@ -1556,7 +1556,7 @@ function renderData(){
       <input type="file" id="importFile" accept=".json" style="display:none" onchange="importJSON(this)">
       <div class="btn-row" style="margin-bottom:10px">
         <button class="btn btn-secondary btn-sm" onclick="exportAllCSV()">📄 匯出排班 CSV</button>
-        <button class="btn btn-secondary btn-sm" onclick="settleMonth='';exportSalaryCSV()">📄 匯出全部薪資 CSV</button>
+        <button class="btn btn-secondary btn-sm" onclick="settleMonth='';exportSalaryCSV()">📄 匯出全部酬勞 CSV</button>
       </div>
       <div class="form-row"><label class="form-label">館長密碼</label>
         <div class="btn-row"><input id="newPw" class="form-input" style="flex:1;min-width:120px" placeholder="輸入新密碼">
@@ -1570,7 +1570,7 @@ function renderData(){
       <div class="stat"><div class="num">${DB.classes.length}</div><div class="cap">班別</div></div>
       <div class="stat"><div class="num">${DB.schedules.length}</div><div class="cap">排班</div></div>
       <div class="stat"><div class="num">${DB.weeklyTemplates.length}</div><div class="cap">固定課</div></div>
-      <div class="stat"><div class="num">${DB.salaryRecords.length}</div><div class="cap">薪資筆</div></div>
+      <div class="stat"><div class="num">${DB.salaryRecords.length}</div><div class="cap">酬勞筆</div></div>
       <div class="stat"><div class="num">${DB.reviews.length}</div><div class="cap">復盤</div></div>
     </div></div>
   </div>`;
@@ -1587,16 +1587,16 @@ function importJSON(input){
 function csvCell(v){ v=String(v==null?'':v); return /[",\n]/.test(v)?'"'+v.replace(/"/g,'""')+'"':v; }
 function exportAllCSV(){
   if(!requirePerm('manageData','排班 CSV 匯出限館長使用')) return;
-  const head=['日期','星期','班別','開始','結束','主教練','助教1','助教2','助教3','課程內容','薪資身分','狀態','備註'];
+  const head=['日期','星期','班別','開始','結束','主教練','助教1','助教2','助教3','課程內容','酬勞身分','狀態','備註'];
   const rows=DB.schedules.map(s=>[s.date,s.weekday,s.className,s.start,s.end,s.mainCoach,s.a1,s.a2,s.a3,s.content,s.payRole,s.status,s.note]);
   dlCSV(head,rows,`排班_${todayStr()}.csv`);
 }
 function exportSalaryCSV(){
-  if(!requirePerm('settleSalary','薪資 CSV 匯出限館長使用')) return;
+  if(!requirePerm('settleSalary','酬勞 CSV 匯出限館長使用')) return;
   const m=settleMonth||monthStr();
-  const head=['日期','班別','人員','身分','基本薪資','加給','扣款','實領','狀態','備註'];
+  const head=['日期','班別','人員','身分','基本酬勞','加給','扣款','實領','狀態','備註'];
   const rows=DB.salaryRecords.filter(r=>!settleMonth||r.month===m).map(r=>[r.date,r.className,r.personName,r.role,r.base,r.bonus,r.deduct,r.net,r.status,r.note]);
-  dlCSV(head,rows,`薪資_${settleMonth||'全部'}.csv`);
+  dlCSV(head,rows,`酬勞_${settleMonth||'全部'}.csv`);
 }
 function dlCSV(head,rows,name){ const csv=[head,...rows].map(r=>r.map(csvCell).join(',')).join('\r\n');
   dl(new Blob(['﻿'+csv],{type:'text/csv;charset=utf-8'}),name); toast('已匯出 CSV'); }
