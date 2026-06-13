@@ -49,6 +49,19 @@ body{ background:
 .name-pick:active{ transform:scale(.97); border-color:var(--accent); }
 .name-pick small{ display:block; font-size:10px; color:var(--text-dim); font-weight:400; margin-top:3px; }
 
+/* ====== 首頁課表預覽 ====== */
+#homeScreen{ align-items:flex-start; overflow-y:auto; }
+.preview-divider{ height:1px; background:linear-gradient(90deg,transparent,var(--border),transparent); margin:20px 0 16px; }
+.preview-h{ font-size:13px; font-weight:800; color:var(--accent); letter-spacing:1px; margin-bottom:8px; display:flex; justify-content:space-between; align-items:baseline; }
+.preview-h span{ font-size:11px; color:var(--text-dim); font-weight:400; }
+.preview-day{ font-size:11px; color:var(--accent-bright); font-weight:700; margin:10px 0 5px; letter-spacing:1px; }
+.preview-empty{ font-size:12px; color:var(--text-dim); text-align:center; padding:14px; background:var(--bg-card-2); border:1px solid var(--border); border-radius:12px; line-height:1.7; }
+.prow{ display:flex; gap:10px; background:var(--bg-card-2); border:1px solid var(--border); border-radius:11px; padding:9px 11px; margin-bottom:6px; align-items:center; }
+.prow.cancelled{ opacity:.5; }
+.prow-t{ font-size:12px; font-weight:800; color:var(--accent-bright); text-align:center; line-height:1.35; flex-shrink:0; min-width:42px; }
+.prow-c{ font-size:13px; font-weight:800; }
+.prow-m{ font-size:11px; color:var(--text-mid); margin-top:3px; line-height:1.6; }
+
 /* ====== 頁首 ====== */
 .header{ padding:16px 18px 12px; text-align:center;
   background:linear-gradient(180deg,rgba(212,175,55,.13) 0%,transparent 100%); border-bottom:1px solid var(--border); position:relative; }
@@ -231,6 +244,7 @@ input[type="range"]::-webkit-slider-thumb{ -webkit-appearance:none; appearance:n
       <div class="entry-desc">排班管理、薪資設定、薪資結算、資料管理</div>
     </div>
     <div class="home-spirit">以 禮 始 ・ 以 禮 終</div>
+    <div id="homePreview" style="text-align:left"></div>
   </div>
 </div>
 
@@ -372,6 +386,33 @@ function goHome(){
   ['coachPick','adminLogin'].forEach(id=>$('#'+id).style.display='none');
   $('#homeScreen').style.display='flex';
   MODE=null; CURRENT_PERSON=null;
+  renderHomePreview();
+}
+function publicRow(s){
+  const assist=[s.a1,s.a2,s.a3].filter(Boolean).join('、')||'—';
+  const cancelled=s.status==='取消';
+  return `<div class="prow${cancelled?' cancelled':''}">
+    <div class="prow-t">${esc(s.start)}<br>${esc(s.end)}</div>
+    <div style="flex:1;min-width:0">
+      <div class="prow-c">${esc(s.className)}${cancelled?' <span class="pill pill-red">取消</span>':''}</div>
+      <div class="prow-m">👤 主：<b>${esc(s.mainCoach||'—')}</b>｜助：${esc(assist)}</div>
+    </div>
+  </div>`;
+}
+function renderHomePreview(){
+  const el=$('#homePreview'); if(!el) return;
+  const t=todayStr();
+  const todayList=DB.schedules.filter(s=>s.date===t).sort((a,b)=>a.start.localeCompare(b.start));
+  const {start,end,days}=weekRange();
+  let html='<div class="preview-divider"></div>';
+  html+=`<div class="preview-h">📅 今日課表 <span>${t.slice(5)}（${weekdayOf(t)}）</span></div>`;
+  html+= todayList.length? todayList.map(publicRow).join('') : '<div class="preview-empty">今日尚無排班</div>';
+  html+=`<div class="preview-h" style="margin-top:16px">🗓️ 本週課表 <span>${start.slice(5)} ~ ${end.slice(5)}</span></div>`;
+  let any=false, wk='';
+  days.forEach(d=>{ const list=DB.schedules.filter(s=>s.date===d).sort((a,b)=>a.start.localeCompare(b.start)); if(!list.length) return; any=true;
+    wk+=`<div class="preview-day">${weekdayOf(d)}　${d.slice(5)}</div>`+list.map(publicRow).join(''); });
+  html+= any? wk : '<div class="preview-empty">本週尚無排班<br>請館長進後台「排班管理」新增，或用「固定週課表」一鍵產生本週</div>';
+  el.innerHTML=html;
 }
 function openCoachPick(){
   $('#homeScreen').style.display='none';
