@@ -15,11 +15,24 @@ var SHEETS = {
   contents: 'Contents',
   schedule: 'Schedule',
   students: 'Students',
-  fullDb: 'FullDB'
+  fullDb: 'FullDB',
+  scheduleView: '排班課表',
+  lessonStatusView: '上課狀況',
+  attendanceView: '出缺席紀錄',
+  kpiView: 'KPI復盤'
 };
 var SCHEDULE_HEADERS = ['id', 'weekday', 'classType', 'start', 'end', 'coach', 'content'];
 var STUDENT_HEADERS = ['id', 'name', 'classType', 'active'];
 var FULLDB_HEADERS = ['key', 'updatedAt', 'json'];
+var SCHEDULE_VIEW_HEADERS = ['日期','星期','班別','開始','結束','主教練','助教1','助教2','助教3','上課內容','狀態','備註'];
+var LESSON_STATUS_HEADERS = ['日期','班別','開始','結束','人員','職務','上課狀態','已完成','遲到','代班','完成時間','課程狀態'];
+var ATTENDANCE_HEADERS = ['日期','星期','班別','開始','結束','人員','職務','出缺席','是否遲到','是否代班','課程狀態','備註'];
+var KPI_VIEW_HEADERS = [
+  '日期','教練','班別','學生人數','上課內容','總分','等級',
+  '教學設計','技術示範','班級控場','學生互動','安全管理','課後延續','課程品質',
+  '課前準備','準時到課','上課態度','課後反思',
+  '課程目標','備課設計','觀察重點','上次延續','最成功','待改善','具體證據','下次改善','下次備課','追蹤指標','協助需求','建立時間'
+];
 
 // Reviews 分頁的欄位：前面是可在 Sheet 直接看/篩的扁平欄，最後一欄 json 存完整物件
 var REVIEW_HEADERS = [
@@ -269,7 +282,8 @@ function saveFullDbSrv(payloadJson) {
   var payload = (typeof payloadJson === 'string') ? JSON.parse(payloadJson) : payloadJson;
   var sh = sheet_(SHEETS.fullDb, FULLDB_HEADERS);
   var updatedAt = Number(payload.updatedAt || new Date().getTime());
-  var dbJson = JSON.stringify(payload.db || {});
+  var db = payload.db || {};
+  var dbJson = JSON.stringify(db);
   var last = sh.getLastRow();
   var found = 0;
   if (last >= 2) {
@@ -281,5 +295,106 @@ function saveFullDbSrv(payloadJson) {
   var row = ['hcps_db_v1', updatedAt, dbJson];
   if (found) sh.getRange(found, 1, 1, FULLDB_HEADERS.length).setValues([row]);
   else sh.appendRow(row);
+  syncReadableSheets_(db);
   return JSON.stringify({ ok: true, updatedAt: updatedAt });
+}
+
+function resetSheet_(name, headers) {
+  var sh = sheet_(name, headers);
+  sh.clearContents();
+  sh.getRange(1, 1, 1, headers.length).setValues([headers]).setFontWeight('bold');
+  return sh;
+}
+
+function writeRows_(name, headers, rows) {
+  var sh = resetSheet_(name, headers);
+  if (rows.length) sh.getRange(2, 1, rows.length, headers.length).setValues(rows);
+  sh.autoResizeColumns(1, headers.length);
+}
+
+function syncReadableSheets_(db) {
+  db = db || {};
+  writeScheduleView_(db);
+  writeLessonStatusView_(db);
+  writeAttendanceView_(db);
+  writeKpiView_(db);
+}
+
+function scheduleEntries_(s) {
+  if (s.entries && s.entries.length) return s.entries;
+  var out = [];
+  if (s.mainCoach) out.push({ person: s.mainCoach, slot: '主教練', status: s.status || '已排班' });
+  ['a1','a2','a3'].forEach(function (k, idx) {
+    if (s[k]) out.push({ person: s[k], slot: '助教' + (idx + 1), status: s.status || '已排班' });
+  });
+  return out;
+}
+
+function writeScheduleView_(db) {
+  var rows = (db.schedules || []).map(function (s) {
+    return [
+      s.date || '', s.weekday || '', s.className || '', s.start || '', s.end || '',
+      s.mainCoach || '', s.a1 || '', s.a2 || '', s.a3 || '',
+      s.content || '', s.status || '', s.note || ''
+    ];
+  });
+  writeRows_(SHEETS.scheduleView, SCHEDULE_VIEW_HEADERS, rows);
+}
+
+function writeLessonStatusView_(db) {
+  var rows = [];
+  (db.schedules || []).forEach(function (s) {
+    scheduleEntries_(s).forEach(function (e) {
+      rows.push([
+        s.date || '', s.className || '', s.start || '', s.end || '',
+        e.person || '', e.slot || '', e.status || '',
+        e.completed ? 'Y' : '', e.late ? 'Y' : '', e.isSub ? 'Y' : '',
+        e.completedAt || '', s.status || ''
+      ]);
+    });
+  });
+  writeRows_(SHEETS.lessonStatusView, LESSON_STATUS_HEADERS, rows);
+}
+
+function attendanceLabel_(s, e) {
+  if ((s.status || '') === '取消' || (e.status || '') === '取消') return '取消';
+  if ((e.status || '') === '請假' || (s.status || '') === '請假') return '請假';
+  if (e.completed && e.late) return '遲到';
+  if (e.completed) return '出席';
+  var today = Utilities.formatDate(new Date(), Session.getScriptTimeZone(), 'yyyy-MM-dd');
+  if ((s.date || '') < today) return '缺席';
+  return '未到課';
+}
+
+function writeAttendanceView_(db) {
+  var rows = [];
+  (db.schedules || []).forEach(function (s) {
+    scheduleEntries_(s).forEach(function (e) {
+      rows.push([
+        s.date || '', s.weekday || '', s.className || '', s.start || '', s.end || '',
+        e.person || '', e.slot || '', attendanceLabel_(s, e),
+        e.late ? 'Y' : '', e.isSub ? 'Y' : '', s.status || '', s.note || ''
+      ]);
+    });
+  });
+  writeRows_(SHEETS.attendanceView, ATTENDANCE_HEADERS, rows);
+}
+
+function writeKpiView_(db) {
+  var rows = (db.reviews || []).map(function (r) {
+    var scores = r.scores || [];
+    var self = r.self || {};
+    var notes = r.selfNotes || {};
+    return [
+      r.date || '', r.coach || '', r.className || '', r.count || '', r.content || '',
+      r.total || '', r.grade || '',
+      scores[0] || '', scores[1] || '', scores[2] || '', scores[3] || '', scores[4] || '', scores[5] || '',
+      r.quality || '',
+      self.prep || '', self.punctual || '', self.attitude || '', self.reflection || '',
+      r.goal || '', r.plan || '', r.focus || '', r.follow || '',
+      r.best || '', r.worst || '', r.evidence || '', r.next || '', r.nextPlan || '', r.metric || '', r.support || '',
+      r.ts ? new Date(r.ts) : ''
+    ];
+  });
+  writeRows_(SHEETS.kpiView, KPI_VIEW_HEADERS, rows);
 }
