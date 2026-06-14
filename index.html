@@ -164,7 +164,8 @@ body{ background:
 .month-day{ min-height:86px; background:var(--bg-card-2); border:1px solid var(--border); border-radius:10px; padding:7px 6px; overflow:hidden; }
 .month-day.muted{ opacity:.38; }
 .month-date{ font-size:11px; font-weight:900; color:var(--accent-bright); margin-bottom:5px; }
-.month-item{ font-size:10px; line-height:1.45; padding:5px 0; border-top:1px solid rgba(42,49,73,.65); color:var(--text-mid); }
+.month-item{ font-size:10px; line-height:1.45; padding:5px 0; border-top:1px solid rgba(42,49,73,.65); color:var(--text-mid); cursor:pointer; border-radius:6px; }
+.month-item:hover{ background:rgba(212,175,55,.08); }
 .month-item b{ color:var(--text); font-size:11px; display:block; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
 .month-item.cancelled{ opacity:.55; text-decoration:line-through; }
 @media(max-width:520px){
@@ -428,6 +429,7 @@ function initCloudSync(){
 /* 酬勞身分 / 狀態 */
 const PAY_ROLES = ['主教練','次教練','助教','獨立帶課','不計酬'];
 const SCH_STATUS = ['已排班','已上課','請假','代班','遲到','取消'];
+const SCHEDULE_TYPES = ['一般上課','帶隊參賽','移地訓練','活動協助','晉級測驗'];
 function payBase(payRole){
   const s = DB.salarySettings.find(x=>x.payKey===payRole && x.type==='固定酬勞' && x.active);
   if(s) return s.amount;
@@ -636,6 +638,7 @@ function coachSchedCard(s, interactive){
   const e=myEntry(s);
   const cls = s.status==='取消'?'cancel': e.completed?'done': e.late?'late':'';
   const assist=[s.a1,s.a2,s.a3].filter(Boolean).join('、')||'—';
+  const type=s.courseType||'一般上課';
   let actions='';
   if(interactive){
     if(s.status==='取消'){ actions=`<span class="pill pill-red">本堂已取消</span>`; }
@@ -653,7 +656,7 @@ function coachSchedCard(s, interactive){
   }
   return `<div class="card ${cls}">
     <div class="card-top">
-      <div><div class="card-time">${esc(s.start)}–${esc(s.end)}</div><div class="card-class">${esc(s.className)}</div></div>
+      <div><div class="card-time">${esc(s.start)}–${esc(s.end)}</div><div class="card-class">${esc(s.className)} ${type!=='一般上課'?`<span class="pill pill-blue">${esc(type)}</span>`:''}</div></div>
       <div style="text-align:right">${statusPill(e.completed?'已上課':s.status)}<div class="card-meta">${esc(e.payRole)}｜基本 $${fmtMoney(payBase(e.payRole))}</div></div>
     </div>
     <div class="card-meta">📅 ${esc(s.date)}（${esc(s.weekday)}）｜主教練：<b>${esc(s.mainCoach||'—')}</b>｜助教：${esc(assist)}<br>📖 ${esc(s.content||'—')}${s.note?'｜備註：'+esc(s.note):''}</div>
@@ -1345,8 +1348,8 @@ function renderMonthSchedule(){
           const items=(byDate[d]||[]).sort((a,b)=>a.start.localeCompare(b.start));
           return `<div class="month-day ${d.slice(0,7)===monthScheduleMonth?'':'muted'}">
             <div class="month-date">${+d.slice(8)}日</div>
-            ${items.slice(0,4).map(s=>`<div class="month-item ${s.status==='取消'?'cancelled':''}">
-              <b>${esc(s.start)} ${esc(s.className)}</b>
+            ${items.slice(0,4).map(s=>`<div class="month-item ${s.status==='取消'?'cancelled':''}" onclick="openMonthSchedAction('${s.id}')">
+              <b>${esc(s.start)} ${esc(s.className)}${(s.courseType&&s.courseType!=='一般上課')?'｜'+esc(s.courseType):''}${s.status==='取消'?'（停課）':''}</b>
               主:${esc(s.mainCoach||'—')}<br>助:${esc([s.a1,s.a2,s.a3].filter(Boolean).join('、')||'—')}
             </div>`).join('')}
             ${items.length>4?`<div class="month-item">另 ${items.length-4} 堂...</div>`:''}
@@ -1365,9 +1368,10 @@ function adminSchedRow(s, full){
   const assist=[s.a1,s.a2,s.a3].filter(Boolean).join('、')||'—';
   const cls=s.status==='取消'?'cancel':'';
   const canDelete=hasPerm('deleteSchedule');
+  const type=s.courseType||'一般上課';
   return `<div class="card ${cls}">
     <div class="card-top">
-      <div><div class="card-time">${esc(s.start)}–${esc(s.end)}</div><div class="card-class">${esc(s.className)} ${s.temp?'<span class="pill pill-orange">臨時</span>':''}</div></div>
+      <div><div class="card-time">${esc(s.start)}–${esc(s.end)}</div><div class="card-class">${esc(s.className)} ${type!=='一般上課'?`<span class="pill pill-blue">${esc(type)}</span>`:''} ${s.temp?'<span class="pill pill-orange">臨時</span>':''}</div></div>
       <div style="text-align:right">${statusPill(s.status)}<div class="card-meta">${esc(s.payRole||'主教練')}</div></div>
     </div>
     <div class="card-meta">📅 ${esc(s.date)}（${esc(s.weekday)}）｜主：<b>${esc(s.mainCoach||'—')}</b>｜助：${esc(assist)}<br>📖 ${esc(s.content||'—')}${s.note?'｜'+esc(s.note):''}</div>
@@ -1377,6 +1381,26 @@ function adminSchedRow(s, full){
       ${canDelete?`<button class="btn btn-red btn-xs" onclick="delSched('${s.id}')">🗑️ 刪除</button>`:''}
     </div>`:''}
   </div>`;
+}
+function openMonthSchedAction(id){
+  if(!requirePerm('manageSchedule','只有館長或主教練可以操作月班表')) return;
+  const s=DB.schedules.find(x=>x.id===id); if(!s) return;
+  const assist=[s.a1,s.a2,s.a3].filter(Boolean).join('、')||'—';
+  const type=s.courseType||'一般上課';
+  openModal('📆 月班表課程操作', `
+    <div class="mini">${esc(s.date)}（${esc(s.weekday)}）｜${esc(s.start)}-${esc(s.end)}</div>
+    <div class="card" style="margin-top:10px">
+      <div class="card-class">${esc(s.className)} ${type!=='一般上課'?`<span class="pill pill-blue">${esc(type)}</span>`:''}</div>
+      <div class="card-meta">主教練：<b>${esc(s.mainCoach||'—')}</b>｜助教：${esc(assist)}<br>狀態：${statusPill(s.status)}<br>內容：${esc(s.content||'—')}${s.note?'｜備註：'+esc(s.note):''}</div>
+    </div>
+    <div class="note">停課會把這堂課標記為「取消」，月班表、排班管理、出缺席與後台 Sheets 都會同步。</div>`,
+    [
+      s.status==='取消'
+        ? {label:'恢復排班',cls:'btn-green',fn:()=>restoreSched(id)}
+        : {label:'停課',cls:'btn-red',fn:()=>cancelSched(id)},
+      {label:'編輯',cls:'btn-secondary',fn:()=>openSchedModal(id)},
+      {label:'關閉',cls:'btn-ghost',fn:closeModal}
+    ]);
 }
 function openSchedModal(id, temp){
   if(!requirePerm('manageSchedule','只有館長或主教練可以新增或編輯排班')) return;
@@ -1388,6 +1412,7 @@ function openSchedModal(id, temp){
       <div class="form-row"><label class="form-label">日期</label><input id="sd_date" type="date" class="form-input" value="${s?s.date:todayStr()}"></div>
       <div class="form-row"><label class="form-label">星期</label><input id="sd_weekday" class="form-input" value="${s?esc(s.weekday):weekdayOf(todayStr())}" readonly></div>
       <div class="form-row"><label class="form-label">班別</label><select id="sd_class" class="form-select" onchange="applySchedClass()">${classOpts}</select></div>
+      <div class="form-row"><label class="form-label">課程類型</label><select id="sd_type" class="form-select">${SCHEDULE_TYPES.map(x=>`<option ${(!s&&x==='一般上課')||(s&&(s.courseType||'一般上課')===x)?'selected':''}>${x}</option>`).join('')}</select></div>
       <div class="form-row"><label class="form-label">酬勞身分</label><select id="sd_payrole" class="form-select">${PAY_ROLES.map(r=>`<option ${s&&s.payRole===r?'selected':''}>${r}</option>`).join('')}</select></div>
       <div class="form-row"><label class="form-label">開始時間</label><input id="sd_start" type="time" class="form-input" value="${s?s.start:'18:00'}"></div>
       <div class="form-row"><label class="form-label">結束時間</label><input id="sd_end" type="time" class="form-input" value="${s?s.end:'19:30'}"></div>
@@ -1403,7 +1428,7 @@ function openSchedModal(id, temp){
       const date=$('#sd_date').value;
       const obj={ date, weekday:weekdayOf(date), className:$('#sd_class').value, start:$('#sd_start').value, end:$('#sd_end').value,
         mainCoach:$('#sd_main').value, a1:$('#sd_a1').value, a2:$('#sd_a2').value, a3:$('#sd_a3').value,
-        content:$('#sd_content').value, payRole:$('#sd_payrole').value, status:$('#sd_status').value, note:$('#sd_note').value, temp:!!temp };
+        content:$('#sd_content').value, courseType:$('#sd_type').value, payRole:$('#sd_payrole').value, status:$('#sd_status').value, note:$('#sd_note').value, temp:!!temp };
       const issues=scheduleIssues(obj, s?s.id:null);
       if(issues.length){ alert('排班異常，請先修正：\n\n'+issues.join('\n')); return; }
       if(s){ Object.assign(s,obj); delete s.entries; ensureEntries(s); }
@@ -1416,7 +1441,18 @@ function applySchedClass(){
   const c=DB.classes.find(x=>x.name===$('#sd_class').value); if(!c) return;
   $('#sd_start').value=c.start; $('#sd_end').value=c.end; if(c.mainCoach) $('#sd_main').value=c.mainCoach;
 }
-function cancelSched(id){ if(!requirePerm('manageSchedule','只有館長或主教練可以取消課程')) return; const s=DB.schedules.find(x=>x.id===id); s.status='取消'; ensureEntries(s); s.entries.forEach(e=>e.status='取消'); save(); toast('已取消課程（不計酬）'); renderTab(CURRENT_TAB); }
+function cancelSched(id){
+  if(!requirePerm('manageSchedule','只有館長或主教練可以取消課程')) return;
+  const s=DB.schedules.find(x=>x.id===id); if(!s) return;
+  s.status='取消'; ensureEntries(s); s.entries.forEach(e=>e.status='取消');
+  save(); closeModal(); toast('已停課／取消課程'); renderTab(CURRENT_TAB);
+}
+function restoreSched(id){
+  if(!requirePerm('manageSchedule','只有館長或主教練可以恢復課程')) return;
+  const s=DB.schedules.find(x=>x.id===id); if(!s) return;
+  s.status='已排班'; ensureEntries(s); s.entries.forEach(e=>{ if(e.status==='取消') e.status='已排班'; });
+  save(); closeModal(); toast('已恢復排班'); renderTab(CURRENT_TAB);
+}
 function delSched(id){ if(!requirePerm('deleteSchedule','刪除排班限館長使用')) return; confirmBox('確定刪除此排班？相關酬勞紀錄不會自動刪除。',()=>{ DB.schedules=DB.schedules.filter(s=>s.id!==id); save(); toast('已刪除'); renderTab(CURRENT_TAB); }); }
 
 /* =========================================================
@@ -1485,7 +1521,7 @@ function genWeekFromTemplate(){
       if(DB.schedules.some(s=>s.date===date&&s.className===t.className&&s.start===t.start)) return;
       const obj={ id:uid(), date, weekday:t.weekday, className:t.className, start:t.start, end:t.end,
         mainCoach:t.mainCoach, a1:t.a1, a2:t.a2, a3:t.a3, content:t.content,
-        payRole:'主教練', status:'已排班', note:'(週課表產生)', temp:false };
+        courseType:'一般上課', payRole:'主教練', status:'已排班', note:'(週課表產生)', temp:false };
       ensureEntries(obj); DB.schedules.push(obj); added++;
     });
     save(); toast(`已產生 ${added} 筆本週排班`); switchTab('a-sched');
@@ -1508,7 +1544,7 @@ function genMonthFromTemplate(){
         }
         const obj={ id:uid(), date, weekday:wd, className:t.className, start:t.start, end:t.end,
           mainCoach:t.mainCoach, a1:t.a1, a2:t.a2, a3:t.a3, content:t.content,
-          payRole:'主教練', status:'已排班', note:'(月班表產生)', temp:false };
+          courseType:'一般上課', payRole:'主教練', status:'已排班', note:'(月班表產生)', temp:false };
         ensureEntries(obj); DB.schedules.push(obj); added++;
       });
     });

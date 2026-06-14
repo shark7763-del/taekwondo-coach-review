@@ -31,8 +31,8 @@ var SHEETS = {
 var SCHEDULE_HEADERS = ['id', 'weekday', 'classType', 'start', 'end', 'coach', 'content'];
 var STUDENT_HEADERS = ['id', 'name', 'classType', 'active'];
 var FULLDB_HEADERS = ['key', 'updatedAt', 'json'];
-var SCHEDULE_VIEW_HEADERS = ['日期','星期','班別','開始','結束','主教練','助教1','助教2','助教3','上課內容','狀態','備註'];
-var MONTH_SCHEDULE_HEADERS = ['月份','日期','星期','班別','開始','結束','主教練','助教','上課內容','狀態','備註'];
+var SCHEDULE_VIEW_HEADERS = ['日期','星期','班別','課程類型','開始','結束','主教練','助教1','助教2','助教3','上課內容','狀態','備註'];
+var MONTH_SCHEDULE_HEADERS = ['月份','日期','星期','班別','課程類型','開始','結束','主教練','助教','上課內容','狀態','備註'];
 var LESSON_STATUS_HEADERS = ['日期','班別','開始','結束','人員','職務','上課狀態','已完成','遲到','代班','完成時間','課程狀態'];
 var ATTENDANCE_HEADERS = ['日期','星期','班別','開始','結束','人員','職務','出缺席','是否遲到','是否代班','課程狀態','備註'];
 var COURSE_RECORD_HEADERS = ['日期','班別','上課教練','助教','今日課程主題','學生人數','上課內容','整體表現','專注度','秩序','體能','技術完成度','總分','今日亮點','需要改善','下次課程建議','受傷或特殊狀況','家長回報'];
@@ -361,7 +361,7 @@ function scheduleEntries_(s) {
 function writeScheduleView_(db) {
   var rows = (db.schedules || []).map(function (s) {
     return [
-      s.date || '', s.weekday || '', s.className || '', s.start || '', s.end || '',
+      s.date || '', s.weekday || '', s.className || '', s.courseType || '一般上課', s.start || '', s.end || '',
       s.mainCoach || '', s.a1 || '', s.a2 || '', s.a3 || '',
       s.content || '', s.status || '', s.note || ''
     ];
@@ -375,7 +375,7 @@ function writeMonthScheduleView_(db) {
     .sort(function (a, b) { return ((a.date || '') + (a.start || '')).localeCompare((b.date || '') + (b.start || '')); })
     .map(function (s) {
       return [
-        (s.date || '').slice(0, 7), s.date || '', s.weekday || '', s.className || '',
+        (s.date || '').slice(0, 7), s.date || '', s.weekday || '', s.className || '', s.courseType || '一般上課',
         s.start || '', s.end || '', s.mainCoach || '',
         [s.a1, s.a2, s.a3].filter(Boolean).join('、'),
         s.content || '', s.status || '', s.note || ''
