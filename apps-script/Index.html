@@ -943,12 +943,22 @@ function renderReview(){
       <div class="form-row"><label class="form-label">是否需要館長 / 主教練協助</label><select id="rv_support" class="form-select"><option>不需要</option><option>需要觀課</option><option>需要協助設計課表</option><option>需要協助處理學生/家長</option></select></div>
     </div>
   </div>
+  <div class="section"><div class="section-header"><div class="section-title">🤖 AI 家長群統整</div></div>
+    <div class="section-body">
+      <div class="section-hint">系統會依照復盤內容與學生個別追蹤，自動整理成家長看得懂的 LINE 群組文字。語氣會保持正向、專業、鼓勵。</div>
+      <div class="btns2">
+        <button class="btn btn-gold btn-sm" onclick="generateAIParentSummary()">✨ AI 統整家長群版本</button>
+        <button class="btn btn-secondary btn-sm" onclick="copyAIParentSummary()">📋 複製 AI 文字</button>
+      </div>
+      <div id="rv_ai_parent" class="result" style="margin-top:10px">按「AI 統整」後，會產生給家長群的今日訓練狀況。</div>
+    </div>
+  </div>
   <div class="section"><div class="section-header"><div class="section-title">💾 儲存與 LINE</div></div>
     <div class="section-body">
       <button class="btn btn-primary btn-block" onclick="saveReview()" style="margin-bottom:10px">💾 儲存復盤紀錄</button>
       <div class="btns2">
         <button class="btn btn-secondary btn-sm" onclick="copyReview()">📋 複製復盤</button>
-        <button class="btn btn-line btn-sm" onclick="shareLine(reviewReport())">💬 LINE 分享</button>
+        <button class="btn btn-line btn-sm" onclick="shareLine($('#rv_ai_parent')?.textContent && !$('#rv_ai_parent').textContent.startsWith('按') ? $('#rv_ai_parent').textContent : reviewReport())">💬 LINE 分享</button>
       </div>
       <div id="rv_report" class="result" style="margin-top:10px">填完後按儲存產生回報內容。</div>
     </div>
@@ -1007,6 +1017,79 @@ function reviewReport(){
 
 雄麒道館和孩子一起進步。`;
 }
+function splitWords(text){
+  return String(text||'').split(/[，,、\n\s/]+/).map(s=>s.trim()).filter(Boolean);
+}
+function aiStudentHighlights(studentTracks){
+  const valid=studentTracks.filter(s=>s.studentName);
+  const progress=valid.find(s=>s.performance==='優秀')
+    || valid.find(s=>s.performance==='穩定' && (s.techIssue||s.focusIssue||s.attitudeIssue||s.note))
+    || valid[0];
+  const encourage=valid.find(s=>s.performance==='需提醒'||s.notifyParent)
+    || valid.find(s=>s.focusIssue||s.attitudeIssue||s.techIssue)
+    || valid.find(s=>s.performance==='普通');
+  return {progress, encourage};
+}
+function aiIssueText(track){
+  if(!track) return '';
+  return [track.techIssue,track.attitudeIssue,track.focusIssue,track.nextReminder,track.note].filter(Boolean).join('、');
+}
+function aiParentGroupReport(){
+  const date=$('#rv_date')?.value||todayStr();
+  const cls=$('#rv_class')?.value||'';
+  const coach=$('#rv_coach')?.value||'';
+  const topics=reviewState.topics.length?reviewState.topics:splitWords($('#rv_content')?.value);
+  const studentTracks=collectStudentTracks('ai-preview');
+  const {progress,encourage}=aiStudentHighlights(studentTracks);
+  const total=$('#rv_total')?.textContent||'';
+  const best=$('#rv_best')?.value.trim()||'孩子們今天能跟上主要訓練節奏，整體投入度穩定。';
+  const worst=$('#rv_worst')?.value.trim()||'部分動作細節與專注穩定度還需要持續提醒。';
+  const next=$('#rv_course_next')?.value.trim()||$('#rv_next')?.value.trim()||'下次會持續加強基本動作穩定度與課堂專注。';
+  const evidence=$('#rv_evidence')?.value.trim();
+  const special=$('#rv_special')?.value.trim();
+  const progressLine=progress
+    ? `今天進步最明顯的是 ${progress.studentName}，${aiIssueText(progress)?'在 '+aiIssueText(progress)+' 的調整上有被教練看見':'上課投入度與完成度都有進步'}。`
+    : '今天有多位孩子在訓練中願意嘗試修正，這是很好的進步。';
+  const encourageLine=encourage
+    ? `也想特別鼓勵 ${encourage.studentName}，目前比較需要的是${aiIssueText(encourage)||'穩定信心與專注度'}，教練會用更明確的提醒陪他一步一步調整。`
+    : '今天沒有特別需要被提醒的孩子，教練會持續觀察每位孩子的狀態。';
+  return `【雄麒道館今日訓練回報】
+日期：${date}（${weekdayOf(date)}）
+班別：${cls}
+教練：${coach}
+
+今日訓練重點：
+${(topics.length?topics:['基本動作','體能與技術穩定度']).slice(0,5).map((t,i)=>`${i+1}. ${t}`).join('\n')}
+
+今日整體狀況：
+整體表現 ${reviewState.quick.overall}/5，課程品質 ${total}/5。${best}
+
+孩子亮點：
+${progressLine}
+
+需要鼓勵與陪伴：
+${encourageLine}
+
+教練觀察：
+${worst}${evidence?' 教練觀察到：'+evidence:''}
+
+下次訓練方向：
+${next}
+${special&&special!=='無'?`\n特殊狀況：${special}`:''}
+
+感謝家長支持，孩子的進步需要道館、孩子與家庭一起配合。雄麒道館會持續陪孩子穩定進步。`;
+}
+function generateAIParentSummary(){
+  if(!reviewState.topics.length && !($('#rv_content')?.value||'').trim()){ toast('請先填寫課程主題或上課內容'); return; }
+  const text=aiParentGroupReport();
+  $('#rv_ai_parent').textContent=text;
+  toast('已產生 AI 家長群版本');
+}
+function copyAIParentSummary(){
+  const el=$('#rv_ai_parent');
+  if(!el || !el.textContent || el.textContent.startsWith('按')) generateAIParentSummary();
+  copyText($('#rv_ai_parent').textContent);
+}
 function saveReview(){
   const required=[
     ['rv_goal','請填寫本堂課核心目標'],
@@ -1025,7 +1108,8 @@ function saveReview(){
   if(!reviewState.topics.length){ toast('請至少選擇一個今日課程主題'); return; }
   for(const [id,msg] of required){ if(!$('#'+id).value.trim()){ toast(msg); $('#'+id).focus(); return; } }
   const reviewId=uid();
-  const parentText=reviewReport();
+  const aiText=($('#rv_ai_parent')?.textContent && !$('#rv_ai_parent').textContent.startsWith('按')) ? $('#rv_ai_parent').textContent : aiParentGroupReport();
+  const parentText=aiText || reviewReport();
   const studentTracks=collectStudentTracks(reviewId);
   const rec={ id:reviewId, date:$('#rv_date').value, coach:$('#rv_coach').value, assistant:$('#rv_assistant').value, className:$('#rv_class').value,
     count:$('#rv_count').value, content:$('#rv_content').value, topics:[...reviewState.topics], quick:Object.assign({},reviewState.quick),
@@ -1041,7 +1125,7 @@ function saveReview(){
     goal:$('#rv_goal').value, plan:$('#rv_plan').value, focus:$('#rv_focus').value, follow:$('#rv_follow').value,
     best:$('#rv_best').value, worst:$('#rv_worst').value, evidence:$('#rv_evidence').value,
     next:$('#rv_next').value, nextPlan:$('#rv_next_plan').value, metric:$('#rv_metric').value,
-    support:$('#rv_support').value, parentReport:parentText, ts:Date.now() };
+    support:$('#rv_support').value, parentReport:parentText, aiParentReport:aiText, ts:Date.now() };
   DB.reviews.push(rec); save();
   DB.studentRecords = DB.studentRecords || [];
   DB.parentReports = DB.parentReports || [];
