@@ -299,6 +299,13 @@ function saveFullDbSrv(payloadJson) {
   return JSON.stringify({ ok: true, updatedAt: updatedAt });
 }
 
+function rebuildReadableSheetsSrv() {
+  var raw = JSON.parse(getFullDbSrv());
+  if (!raw.db) return 'FullDB 尚無資料，請先從系統儲存一次';
+  syncReadableSheets_(raw.db);
+  return 'ok';
+}
+
 function resetSheet_(name, headers) {
   var sh = sheet_(name, headers);
   sh.clearContents();
