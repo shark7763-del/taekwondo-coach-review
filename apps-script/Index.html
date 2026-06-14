@@ -1,61 +1,1925 @@
 <!DOCTYPE html>
 <html lang="zh-Hant">
 <head>
-  <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-  <title>雄麒道館｜教練課後復盤系統</title>
-  <?!= include('CSS'); ?>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<title>雄麒道館｜教練課程品質管理系統</title>
+<style>
+* { box-sizing:border-box; margin:0; padding:0; -webkit-tap-highlight-color:transparent; }
+:root{
+  --bg-dark:#080a12; --bg-card:#121726; --bg-card-2:#1a2034; --bg-input:#161c2e;
+  --accent:#d4af37; --accent-bright:#f7e08a; --accent-deep:#a8842a; --accent-red:#c8102e; --line-green:#06c755;
+  --text:#f5f5f5; --text-dim:#7e889c; --text-mid:#b2bacb; --border:#262d44;
+  --green:#22c55e; --orange:#f59e0b; --red:#ef4444; --blue:#3b82f6; --purple:#a78bfa;
+}
+html,body{ background:var(--bg-dark); color:var(--text);
+  font-family:-apple-system,BlinkMacSystemFont,"Microsoft JhengHei","PingFang TC","Noto Sans TC",sans-serif;
+  min-height:100vh; overscroll-behavior:none; }
+body{ background:
+  radial-gradient(ellipse 80% 50% at top,rgba(212,175,55,.10) 0%,transparent 55%),
+  radial-gradient(ellipse 80% 50% at bottom,rgba(200,16,46,.06) 0%,transparent 55%),var(--bg-dark);
+  padding-bottom:70px; }
+.app{ max-width:480px; margin:0 auto; }
+@media(min-width:481px){ .app{ max-width:720px; } }
+
+/* ====== 首頁 / 登入 ====== */
+.overlay{ position:fixed; inset:0; z-index:200; display:flex; align-items:center; justify-content:center;
+  background:radial-gradient(ellipse at top,rgba(212,175,55,.12),var(--bg-dark) 70%); padding:24px; }
+.home-card{ max-width:400px; width:100%; text-align:center; position:relative; }
+.home-logo{ width:74px; height:74px; margin:0 auto 14px; border-radius:50%; font-size:36px;
+  background:linear-gradient(135deg,var(--accent-deep),var(--accent-bright)); display:flex; align-items:center; justify-content:center;
+  box-shadow:0 6px 24px rgba(212,175,55,.45); }
+.home-brand{ font-size:12px; letter-spacing:5px; color:var(--accent); font-weight:700; }
+.home-title{ font-size:24px; font-weight:900; letter-spacing:2px; margin-top:6px; line-height:1.3; }
+.home-sub{ font-size:12px; color:var(--text-dim); margin:12px 0 26px; letter-spacing:1px; line-height:1.8; }
+.entry-btn{ display:block; width:100%; padding:22px 20px; margin-bottom:14px; border-radius:18px; cursor:pointer;
+  border:1px solid var(--border); text-align:left; transition:.15s; position:relative; overflow:hidden; }
+.entry-btn:active{ transform:scale(.98); }
+.entry-coach{ background:linear-gradient(135deg,#1a2034,#222a44); border-color:var(--accent); }
+.entry-admin{ background:linear-gradient(135deg,var(--accent-red),#7a0a1f); border-color:var(--accent-red); }
+.entry-icon{ font-size:30px; }
+.entry-name{ font-size:19px; font-weight:900; letter-spacing:1px; margin-top:6px; }
+.entry-desc{ font-size:11px; color:var(--text-mid); margin-top:5px; line-height:1.6; }
+.entry-admin .entry-desc{ color:#f4c9cf; }
+.home-spirit{ margin-top:18px; font-size:11px; letter-spacing:4px; color:var(--accent-deep); }
+.back-link{ display:inline-block; margin-top:16px; font-size:12px; color:var(--text-dim); cursor:pointer; }
+.name-grid{ display:grid; grid-template-columns:1fr 1fr; gap:10px; margin-top:6px; }
+.name-pick{ padding:16px 10px; border:1px solid var(--border); border-radius:13px; background:var(--bg-card-2);
+  font-size:15px; font-weight:700; cursor:pointer; transition:.12s; }
+.name-pick:active{ transform:scale(.97); border-color:var(--accent); }
+.name-pick small{ display:block; font-size:10px; color:var(--text-dim); font-weight:400; margin-top:3px; }
+
+/* ====== 首頁課表預覽 ====== */
+#homeScreen{ align-items:flex-start; overflow-y:auto; }
+.preview-divider{ height:1px; background:linear-gradient(90deg,transparent,var(--border),transparent); margin:20px 0 16px; }
+.preview-h{ font-size:13px; font-weight:800; color:var(--accent); letter-spacing:1px; margin-bottom:8px; display:flex; justify-content:space-between; align-items:baseline; }
+.preview-h span{ font-size:11px; color:var(--text-dim); font-weight:400; }
+.preview-day{ font-size:11px; color:var(--accent-bright); font-weight:700; margin:10px 0 5px; letter-spacing:1px; }
+.preview-empty{ font-size:12px; color:var(--text-dim); text-align:center; padding:14px; background:var(--bg-card-2); border:1px solid var(--border); border-radius:12px; line-height:1.7; }
+.prow{ display:flex; gap:10px; background:var(--bg-card-2); border:1px solid var(--border); border-radius:11px; padding:9px 11px; margin-bottom:6px; align-items:center; }
+.prow.cancelled{ opacity:.5; }
+.prow-t{ font-size:12px; font-weight:800; color:var(--accent-bright); text-align:center; line-height:1.35; flex-shrink:0; min-width:42px; }
+.prow-c{ font-size:13px; font-weight:800; }
+.prow-m{ font-size:11px; color:var(--text-mid); margin-top:3px; line-height:1.6; }
+
+/* ====== 頁首 ====== */
+.header{ padding:16px 18px 12px; text-align:center;
+  background:linear-gradient(180deg,rgba(212,175,55,.13) 0%,transparent 100%); border-bottom:1px solid var(--border); position:relative; }
+.logo{ width:48px; height:48px; margin:0 auto 6px; border-radius:50%; font-size:24px;
+  background:linear-gradient(135deg,var(--accent-deep),var(--accent-bright)); display:flex; align-items:center; justify-content:center;
+  box-shadow:0 4px 18px rgba(212,175,55,.45); }
+.brand{ font-size:11px; color:var(--accent); font-weight:700; letter-spacing:3px; }
+.title{ font-size:16px; font-weight:800; letter-spacing:1px; margin-top:2px; }
+.subtitle{ font-size:11px; color:var(--text-dim); margin-top:3px; letter-spacing:1px; }
+.role-switch{ position:absolute; right:12px; top:12px; font-size:11px; padding:6px 10px; border-radius:9px;
+  border:1px solid var(--border); background:rgba(0,0,0,.35); color:var(--text-dim); cursor:pointer; }
+.role-badge{ display:inline-block; margin-top:8px; font-size:11px; padding:3px 12px; border-radius:12px;
+  background:rgba(212,175,55,.15); color:var(--accent); border:1px solid var(--accent); font-weight:600; }
+
+/* ====== 分頁 ====== */
+.tab-nav{ position:sticky; top:0; z-index:50; display:flex; overflow-x:auto; background:rgba(10,13,22,.96); backdrop-filter:blur(8px); border-bottom:1px solid var(--border); scrollbar-width:none; }
+.tab-nav::-webkit-scrollbar{ display:none; }
+.tab-btn{ flex:0 0 auto; min-width:74px; padding:12px 11px; background:transparent; border:none; border-bottom:2px solid transparent;
+  color:var(--text-dim); font-size:12px; font-weight:600; cursor:pointer; white-space:nowrap; transition:.15s; }
+.tab-btn.active{ color:var(--accent); border-bottom-color:var(--accent); background:rgba(212,175,55,.07); }
+.tab-panel{ display:none; }
+.tab-panel.active{ display:block; animation:fade .25s ease; }
+@keyframes fade{ from{ opacity:0; transform:translateY(6px);} to{ opacity:1; transform:none;} }
+
+/* ====== 區塊 ====== */
+.section{ margin:16px; background:var(--bg-card); border:1px solid var(--border); border-radius:16px; overflow:hidden; box-shadow:0 4px 18px rgba(0,0,0,.25); }
+.section-header{ padding:13px 16px; background:linear-gradient(90deg,rgba(212,175,55,.11) 0%,transparent 100%);
+  border-bottom:1px solid var(--border); display:flex; align-items:center; gap:10px; justify-content:space-between; }
+.section-title{ font-size:14px; font-weight:800; letter-spacing:1px; }
+.section-body{ padding:14px 16px; }
+.section-hint{ font-size:11px; color:var(--text-dim); margin-bottom:12px; line-height:1.7; }
+
+/* ====== 表單 ====== */
+.form-grid{ display:grid; grid-template-columns:1fr 1fr; gap:12px; }
+.form-grid.full{ grid-template-columns:1fr; }
+.form-row{ margin-bottom:12px; }
+.form-row:last-child{ margin-bottom:0; }
+.form-label{ display:block; font-size:11px; color:var(--accent); font-weight:700; letter-spacing:1px; margin-bottom:5px; }
+.form-input,.form-select,.form-textarea{ width:100%; background:var(--bg-input); border:1px solid var(--border); color:var(--text);
+  font-size:14px; padding:10px 12px; border-radius:9px; outline:none; font-family:inherit; }
+.form-input:focus,.form-select:focus,.form-textarea:focus{ border-color:var(--accent); box-shadow:0 0 0 2px rgba(212,175,55,.16); }
+.form-input::placeholder,.form-textarea::placeholder{ color:var(--text-dim); font-size:13px; }
+.form-textarea{ min-height:64px; resize:vertical; line-height:1.6; }
+.form-select{ appearance:none; -webkit-appearance:none;
+  background-image:url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='10' height='6' viewBox='0 0 10 6'><path fill='%23d4af37' d='M0 0l5 6 5-6z'/></svg>");
+  background-repeat:no-repeat; background-position:right 12px center; padding-right:30px; }
+
+/* ====== 按鈕 ====== */
+.btn{ padding:13px; border:0; border-radius:11px; font-size:13px; font-weight:800; letter-spacing:1px; cursor:pointer; font-family:inherit; transition:transform .15s; }
+.btn:active{ transform:scale(.98); }
+.btn-primary{ background:linear-gradient(135deg,var(--accent-red),#8a0a1f); color:#fff; box-shadow:0 4px 14px rgba(200,16,46,.3); }
+.btn-gold{ background:linear-gradient(135deg,var(--accent),var(--accent-bright)); color:var(--bg-dark); box-shadow:0 4px 14px rgba(212,175,55,.3); }
+.btn-secondary{ background:var(--bg-card-2); color:var(--text); border:1px solid var(--border); }
+.btn-line{ background:linear-gradient(135deg,var(--line-green),#04a544); color:#fff; box-shadow:0 4px 14px rgba(6,199,85,.3); }
+.btn-green{ background:linear-gradient(135deg,var(--green),#16a34a); color:#fff; }
+.btn-block{ width:100%; }
+.btn-ghost{ background:transparent; border:1px solid var(--border); color:var(--text-mid); }
+.btn-red{ background:var(--red); color:#fff; }
+.btn-orange{ background:linear-gradient(135deg,var(--orange),#d97706); color:#fff; }
+.btn-blue{ background:linear-gradient(135deg,var(--blue),#2563eb); color:#fff; }
+.btn-sm{ padding:9px 12px; font-size:12px; letter-spacing:0; }
+.btn-xs{ padding:7px 10px; font-size:11px; letter-spacing:0; border-radius:9px; }
+.btn-row{ display:flex; gap:8px; flex-wrap:wrap; }
+.btn-row .btn{ flex:1; min-width:90px; }
+.btns2{ display:grid; grid-template-columns:1fr 1fr; gap:8px; }
+
+/* ====== 卡片 / 排班 ====== */
+.card{ background:var(--bg-card-2); border:1px solid var(--border); border-radius:13px; padding:13px; margin-bottom:10px; }
+.card.late{ border-left:3px solid var(--orange); }
+.card.done{ border-left:3px solid var(--green); }
+.card.cancel{ border-left:3px solid var(--red); opacity:.7; }
+.card.leave{ border-left:3px solid var(--purple); }
+.card-top{ display:flex; justify-content:space-between; align-items:flex-start; gap:8px; }
+.card-time{ font-size:17px; font-weight:900; color:var(--accent-bright); }
+.card-class{ font-size:14px; font-weight:800; margin-top:2px; }
+.card-meta{ font-size:11px; color:var(--text-mid); margin-top:5px; line-height:1.7; }
+.card-meta b{ color:var(--text); }
+.card-actions{ display:flex; flex-wrap:wrap; gap:6px; margin-top:11px; }
+.pill{ display:inline-block; font-size:10px; font-weight:800; padding:3px 9px; border-radius:10px; border:1px solid; }
+.pill-gold{ background:rgba(212,175,55,.15); color:var(--accent); border-color:var(--accent); }
+.pill-green{ background:rgba(34,197,94,.16); color:#86efac; border-color:var(--green); }
+.pill-orange{ background:rgba(245,158,11,.16); color:#fcd34d; border-color:var(--orange); }
+.pill-red{ background:rgba(239,68,68,.16); color:#fca5a5; border-color:var(--red); }
+.pill-purple{ background:rgba(167,139,250,.16); color:#c4b5fd; border-color:var(--purple); }
+.pill-blue{ background:rgba(59,130,246,.16); color:#93c5fd; border-color:var(--blue); }
+.pill-gray{ background:rgba(126,136,156,.16); color:#cbd5e1; border-color:#475569; }
+
+/* ====== 統計 ====== */
+.dash-grid{ display:grid; grid-template-columns:1fr 1fr; gap:10px; }
+.dash-grid.g3{ grid-template-columns:1fr 1fr 1fr; }
+.stat{ background:var(--bg-card-2); border:1px solid var(--border); border-radius:12px; padding:14px 8px; text-align:center; }
+.stat .num{ font-size:26px; font-weight:900; color:var(--accent); line-height:1; }
+.stat .num.warn{ color:var(--red); } .stat .num.good{ color:var(--green); } .stat .num.blue{ color:var(--blue); }
+.stat .cap{ font-size:11px; color:var(--text-dim); margin-top:5px; }
+.money{ color:var(--accent-bright); font-weight:900; }
+.empty{ color:var(--text-dim); text-align:center; padding:24px; font-size:13px; }
+.mini{ font-size:12px; color:var(--text-mid); line-height:1.7; }
+.month-grid{ display:grid; grid-template-columns:repeat(7,1fr); gap:6px; }
+.month-head{ font-size:10px; color:var(--accent); text-align:center; font-weight:800; padding:4px 0; }
+.month-day{ min-height:86px; background:var(--bg-card-2); border:1px solid var(--border); border-radius:10px; padding:7px 6px; overflow:hidden; }
+.month-day.muted{ opacity:.38; }
+.month-date{ font-size:11px; font-weight:900; color:var(--accent-bright); margin-bottom:5px; }
+.month-item{ font-size:10px; line-height:1.45; padding:5px 0; border-top:1px solid rgba(42,49,73,.65); color:var(--text-mid); cursor:pointer; border-radius:6px; }
+.month-item:hover{ background:rgba(212,175,55,.08); }
+.month-item b{ color:var(--text); font-size:11px; display:block; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+.month-item.cancelled{ opacity:.55; text-decoration:line-through; }
+@media(max-width:520px){
+  .month-grid{ gap:4px; }
+  .month-day{ min-height:76px; padding:6px 4px; border-radius:8px; }
+  .month-item{ font-size:9px; }
+}
+
+/* 列表項 */
+.list-item{ background:var(--bg-card-2); border:1px solid var(--border); border-radius:12px; padding:12px; margin-bottom:9px; }
+.li-top{ display:flex; justify-content:space-between; align-items:center; gap:8px; }
+.li-name{ font-weight:800; font-size:14px; }
+.li-sub{ font-size:11px; color:var(--text-dim); margin-top:3px; line-height:1.6; }
+.li-actions{ display:flex; gap:6px; }
+.icon-btn{ width:32px; height:32px; border-radius:9px; border:1px solid var(--border); background:var(--bg-input); color:var(--text-mid);
+  font-size:14px; cursor:pointer; display:flex; align-items:center; justify-content:center; }
+.icon-btn.del{ color:#fca5a5; }
+
+/* 結算表 */
+.settle-row{ background:var(--bg-card-2); border:1px solid var(--border); border-radius:12px; padding:12px; margin-bottom:9px; }
+.settle-head{ display:flex; justify-content:space-between; align-items:center; cursor:pointer; }
+.settle-net{ font-size:20px; font-weight:900; }
+.settle-detail{ display:none; margin-top:10px; border-top:1px dashed var(--border); padding-top:10px; }
+.settle-detail.show{ display:block; }
+.detail-line{ font-size:11px; color:var(--text-mid); padding:6px 0; border-bottom:1px solid rgba(42,49,73,.5); line-height:1.6; }
+.detail-line:last-child{ border-bottom:none; }
+
+/* 復盤 KPI */
+.score-row{ padding:9px 0; border-bottom:1px solid rgba(42,49,73,.5); }
+.score-row:last-child{ border-bottom:none; }
+.score-row-top{ display:flex; justify-content:space-between; align-items:center; margin-bottom:6px; }
+.score-name{ font-size:13px; }
+.score-pill{ font-size:12px; font-weight:800; padding:2px 10px; border-radius:12px; background:var(--bg-input); color:var(--accent);
+  border:1px solid var(--border); min-width:38px; text-align:center; }
+input[type="range"]{ width:100%; -webkit-appearance:none; appearance:none; background:transparent; height:24px; cursor:pointer; }
+input[type="range"]::-webkit-slider-runnable-track{ height:5px; background:var(--bg-dark); border-radius:3px; border:1px solid var(--border); }
+input[type="range"]::-webkit-slider-thumb{ -webkit-appearance:none; appearance:none; width:21px; height:21px;
+  background:linear-gradient(135deg,var(--accent-bright),var(--accent)); border:2px solid var(--bg-dark); border-radius:50%;
+  margin-top:-8px; cursor:pointer; box-shadow:0 2px 8px rgba(212,175,55,.5); }
+.grade-badge{ width:84px; height:84px; border-radius:50%; background:var(--bg-dark); display:flex; flex-direction:column;
+  align-items:center; justify-content:center; border:3px solid var(--accent); flex-shrink:0; box-shadow:0 0 24px rgba(212,175,55,.3); }
+.grade-letter{ font-size:34px; font-weight:900; line-height:1; color:var(--accent); }
+.grade-pct{ font-size:11px; color:var(--text-mid); margin-top:2px; }
+.radar-wrap{ width:100%; max-width:320px; margin:6px auto 0; }
+.radar-wrap svg{ width:100%; height:auto; display:block; }
+
+.note{ background:rgba(245,158,11,.1); border:1px solid rgba(245,158,11,.3); color:#fbbf24; padding:10px 12px; border-radius:10px;
+  font-size:12px; line-height:1.6; margin-bottom:12px; }
+.note.ok{ background:rgba(34,197,94,.1); border-color:rgba(34,197,94,.3); color:#bbf7d0; }
+.result{ background:var(--bg-dark); border:1px solid var(--border); color:var(--text); border-radius:12px; padding:14px 16px;
+  white-space:pre-wrap; line-height:1.75; font-size:13px; font-family:"Menlo","Consolas","PingFang TC",monospace; max-height:440px; overflow-y:auto; }
+
+.toast{ position:fixed; top:18px; left:50%; transform:translateX(-50%); background:linear-gradient(135deg,var(--accent),var(--accent-bright)); color:var(--bg-dark);
+  padding:11px 22px; border-radius:9px; font-size:13px; font-weight:800; box-shadow:0 4px 20px rgba(212,175,55,.4);
+  opacity:0; pointer-events:none; transition:opacity .3s,transform .3s; z-index:400; max-width:90%; text-align:center; }
+.toast.show{ opacity:1; transform:translateX(-50%) translateY(4px); }
+.footer-mark{ text-align:center; font-size:11px; color:var(--accent-deep); letter-spacing:3px; padding:8px 16px 24px; }
+
+/* modal */
+.modal{ position:fixed; inset:0; z-index:250; display:none; align-items:flex-start; justify-content:center; padding:20px;
+  background:rgba(0,0,0,.7); overflow-y:auto; }
+.modal.show{ display:flex; }
+.modal-card{ background:linear-gradient(160deg,var(--bg-card),var(--bg-card-2)); border:1px solid var(--border); border-radius:18px;
+  max-width:440px; width:100%; margin:auto; box-shadow:0 20px 60px rgba(0,0,0,.6); }
+.modal-head{ padding:15px 18px; border-bottom:1px solid var(--border); display:flex; justify-content:space-between; align-items:center; }
+.modal-head h3{ font-size:15px; font-weight:800; letter-spacing:1px; }
+.modal-body{ padding:16px 18px; max-height:70vh; overflow-y:auto; }
+.modal-foot{ padding:13px 18px; border-top:1px solid var(--border); display:flex; gap:8px; }
+.modal-foot .btn{ flex:1; }
+.x-btn{ font-size:22px; color:var(--text-dim); cursor:pointer; line-height:1; }
+</style>
 </head>
 <body>
-  <div id="toast" class="toast"></div>
 
-  <section id="loginView" class="login-view">
-    <div class="brand-card">
-      <div class="logo">🥋</div>
-      <div class="brand-en">HSIUNG CHI DOJO</div>
-      <h1>雄麒道館<br>教練課後復盤系統</h1>
-      <p>30 秒完成復盤｜教學品質管理｜家長回饋產生</p>
-      <div class="field">
-        <label>帳號</label>
-        <input id="loginAccount" autocomplete="username" placeholder="請輸入帳號">
-      </div>
-      <div class="field">
-        <label>密碼</label>
-        <input id="loginPassword" type="password" autocomplete="current-password" placeholder="請輸入密碼">
-      </div>
-      <button class="btn gold wide" onclick="login()">登入系統</button>
-      <button class="btn ghost wide" onclick="setupSheets()">初始化 Google Sheets 分頁</button>
-      <div class="hint">預設館長帳號：admin / 7763。正式使用請到「教練名單」修改。</div>
+<!-- ====== 首頁 ====== -->
+<div class="overlay" id="homeScreen">
+  <div class="home-card">
+    <div class="home-logo">🥋</div>
+    <div class="home-brand">HSIUNG CHI DOJO</div>
+    <div class="home-title">雄麒道館<br>教練課程品質管理系統</div>
+    <div class="home-sub">排班管理｜課後復盤｜學生追蹤｜品質管理</div>
+    <div class="entry-btn entry-coach" onclick="openCoachPick()">
+      <div class="entry-icon">🧑‍🏫</div>
+      <div class="entry-name">教練 / 助教入口</div>
+      <div class="entry-desc">查看我的排班、完成上課、請假代班、查看酬勞</div>
     </div>
-  </section>
+    <div class="entry-btn entry-admin" onclick="openAdminLogin()">
+      <div class="entry-icon">🛡️</div>
+      <div class="entry-name">館長管理後台</div>
+      <div class="entry-desc">排班管理、酬勞設定、酬勞結算、資料管理</div>
+    </div>
+    <div class="home-spirit">以 禮 始 ・ 以 禮 終</div>
+    <div id="homePreview" style="text-align:left"></div>
+  </div>
+</div>
 
-  <main id="appView" class="app hidden">
-    <header class="topbar">
-      <div>
-        <div class="eyebrow">雄麒道館</div>
-        <h2>教學品質管理系統</h2>
-        <div id="userBadge" class="user-badge"></div>
+<!-- 選擇教練/助教 -->
+<div class="overlay" id="coachPick" style="display:none">
+  <div class="home-card">
+    <div class="home-logo">🧑‍🏫</div>
+    <div class="home-title" style="font-size:20px">請選擇你的姓名</div>
+    <div class="home-sub">進入後只會看到你自己的排班與酬勞</div>
+    <div class="name-grid" id="coachPickGrid"></div>
+    <div class="back-link" onclick="goHome()">← 返回首頁</div>
+  </div>
+</div>
+
+<!-- 館長密碼 -->
+<div class="overlay" id="adminLogin" style="display:none">
+  <div class="home-card">
+    <div class="home-logo">🛡️</div>
+    <div class="home-title" style="font-size:20px">館長管理後台</div>
+    <div class="home-sub">請輸入館長密碼</div>
+    <input type="password" id="adminPwIn" class="form-input" placeholder="館長密碼" style="text-align:center"
+      onkeydown="if(event.key==='Enter')submitAdminPw()">
+    <button class="btn btn-primary btn-block" style="margin-top:12px" onclick="submitAdminPw()">進入後台</button>
+    <div class="back-link" onclick="goHome()">← 返回首頁</div>
+  </div>
+</div>
+
+<!-- ====== 主畫面 ====== -->
+<div class="app" id="appWrap" style="display:none">
+  <header class="header">
+    <button class="role-switch" onclick="goHome()">🏠 首頁</button>
+    <div class="logo">🥋</div>
+    <div class="brand">雄麒道館</div>
+    <div class="title">教練課程品質管理系統</div>
+    <div class="subtitle">排班 · 復盤 · 追蹤 · 品質</div>
+    <span class="role-badge" id="roleBadge"></span>
+  </header>
+  <nav class="tab-nav" id="tabNav"></nav>
+  <div id="panels"></div>
+  <div class="footer-mark">以 禮 始 ・ 以 禮 終</div>
+</div>
+
+<!-- 通用 Modal -->
+<div class="modal" id="modal">
+  <div class="modal-card">
+    <div class="modal-head"><h3 id="modalTitle">標題</h3><span class="x-btn" onclick="closeModal()">×</span></div>
+    <div class="modal-body" id="modalBody"></div>
+    <div class="modal-foot" id="modalFoot"></div>
+  </div>
+</div>
+
+<div class="toast" id="toast"></div>
+
+<script>
+/* =========================================================
+   雄麒道館｜教練課程品質管理系統  (純前端 + localStorage)
+========================================================= */
+const $ = s => document.querySelector(s);
+const esc = s => String(s==null?'':s).replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
+const uid = () => Date.now().toString(36)+Math.random().toString(36).slice(2,7);
+const KEY = 'hcps_db_v1';
+const WD = ['週日','週一','週二','週三','週四','週五','週六'];
+function todayStr(){ const d=new Date(); return d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0')+'-'+String(d.getDate()).padStart(2,'0'); }
+function monthStr(d){ d=d||todayStr(); return d.slice(0,7); }
+function weekdayOf(dateStr){ return WD[new Date(dateStr+'T00:00:00').getDay()]; }
+function fmtMoney(n){ return (n<0?'-':'')+Math.abs(Math.round(n)).toLocaleString(); }
+function toast(m){ const t=$('#toast'); t.textContent=m; t.classList.add('show'); clearTimeout(t._t); t._t=setTimeout(()=>t.classList.remove('show'),1900); }
+
+/* ---------- 預設資料 ---------- */
+function mkClass(name,start,end,assist){ return { id:uid(), name, start, end, mainCoach:'', assistantCount:assist, note:'' }; }
+function defaultDB(){
+  return {
+    adminSettings:{ adminPw:'7763', dojoName:'雄麒道館' },
+    people:[
+      { id:uid(), name:'復傑教練', role:'館長', active:true, payRole:'主教練', note:'' },
+      { id:uid(), name:'品妡',   role:'主教練', active:true, payRole:'主教練', note:'' },
+      { id:uid(), name:'彥博',   role:'次教練', active:true, payRole:'次教練', note:'' },
+      { id:uid(), name:'仲寧',   role:'助教',   active:true, payRole:'助教', note:'' },
+    ],
+    classes:[
+      mkClass('幼幼班','17:00','18:00',1),
+      mkClass('基礎班','18:00','19:30',2),
+      mkClass('健身班','18:00','19:30',1),
+      mkClass('選手班','19:30','21:00',2),
+      mkClass('品勢班','19:30','21:00',1),
+      mkClass('週六班','09:00','11:00',2),
+      mkClass('黑帶培訓班','19:30','21:30',1),
+      mkClass('晉級測驗班','14:00','16:00',2),
+      mkClass('暑期班','09:00','12:00',2),
+      mkClass('寒暑訓班','09:00','12:00',2),
+    ],
+    weeklyTemplates:[],
+    schedules:[],
+    leaveRequests:[],
+    substituteRecords:[],
+    salarySettings:[
+      { id:uid(), name:'助教',       amount:150, type:'固定酬勞', active:true, payKey:'助教' },
+      { id:uid(), name:'次教練',     amount:200, type:'固定酬勞', active:true, payKey:'次教練' },
+      { id:uid(), name:'主教練',     amount:300, type:'固定酬勞', active:true, payKey:'主教練' },
+      { id:uid(), name:'獨立帶課',   amount:500, type:'固定酬勞', active:true, payKey:'獨立帶課' },
+      { id:uid(), name:'遲到扣款',   amount:100, type:'扣款',     active:true, payKey:'late' },
+      { id:uid(), name:'臨時代班加給',amount:50,  type:'加給',     active:true, payKey:'sub' },
+      { id:uid(), name:'特殊活動協助',amount:0,    type:'加給',     active:true, payKey:'' },
+      { id:uid(), name:'晉級測驗協助',amount:0,    type:'加給',     active:true, payKey:'' },
+      { id:uid(), name:'比賽帶隊協助',amount:0,    type:'加給',     active:true, payKey:'' },
+    ],
+    salaryRecords:[],
+    reviews:[],
+    students:[
+      { id:uid(), name:'學生A', className:'幼幼班', active:true, parentName:'', parentLine:'', note:'' },
+      { id:uid(), name:'學生B', className:'基礎班', active:true, parentName:'', parentLine:'', note:'' },
+      { id:uid(), name:'學生C', className:'選手班', active:true, parentName:'', parentLine:'', note:'' },
+    ],
+    studentRecords:[],
+    parentReports:[],
+  };
+}
+
+/* ---------- 資料存取 ---------- */
+let DB = load();
+function load(){
+  try{ const raw=localStorage.getItem(KEY); if(raw){ const d=JSON.parse(raw); return Object.assign(defaultDB(), d); } }catch(e){}
+  return defaultDB();
+}
+function save(){
+  DB._updatedAt=Date.now();
+  localStorage.setItem(KEY, JSON.stringify(DB));
+  queueCloudSave();
+}
+const CLOUD_ON = typeof google!=='undefined' && google.script && google.script.run;
+let cloudSaveTimer=null, cloudBooted=false;
+function queueCloudSave(){
+  if(!CLOUD_ON || !cloudBooted) return;
+  clearTimeout(cloudSaveTimer);
+  cloudSaveTimer=setTimeout(()=>saveCloudNow(),650);
+}
+function saveCloudNow(){
+  if(!CLOUD_ON) return;
+  google.script.run
+    .withFailureHandler(()=>toast('已存本機，雲端同步失敗'))
+    .saveFullDbSrv(JSON.stringify({updatedAt:DB._updatedAt||Date.now(), db:DB}));
+}
+function initCloudSync(){
+  if(!CLOUD_ON) return;
+  google.script.run
+    .withSuccessHandler(raw=>{
+      cloudBooted=true;
+      try{
+        const payload=JSON.parse(raw||'{}');
+        const localAt=DB._updatedAt||0;
+        if(payload.db && (payload.updatedAt||0)>localAt){
+          DB=Object.assign(defaultDB(), payload.db);
+          localStorage.setItem(KEY, JSON.stringify(DB));
+          toast('☁️ 已載入雲端資料');
+          goHome();
+        }else if(!payload.db){
+          saveCloudNow();
+          toast('☁️ 已建立雲端同步');
+        }else{
+          toast('☁️ 雲端同步已啟用');
+        }
+      }catch(e){ toast('雲端資料讀取失敗，先使用本機資料'); }
+    })
+    .withFailureHandler(()=>{ cloudBooted=false; toast('雲端連線失敗，先使用本機資料'); })
+    .getFullDbSrv();
+}
+
+/* 酬勞身分 / 狀態 */
+const PAY_ROLES = ['主教練','次教練','助教','獨立帶課','不計酬'];
+const SCH_STATUS = ['已排班','已上課','請假','代班','遲到','取消'];
+const SCHEDULE_TYPES = ['一般上課','帶隊參賽','移地訓練','活動協助','晉級測驗'];
+function payBase(payRole){
+  const s = DB.salarySettings.find(x=>x.payKey===payRole && x.type==='固定酬勞' && x.active);
+  if(s) return s.amount;
+  return 0;
+}
+function setVal(key){ const s=DB.salarySettings.find(x=>x.payKey===key && x.active); return s? s.amount:0; }
+function lateAmt(){ return setVal('late'); }
+function subAmt(){ return setVal('sub'); }
+function activePeople(){ return DB.people.filter(p=>p.active); }
+function personByName(n){ return DB.people.find(p=>p.name===n); }
+
+/* =========================================================
+   首頁 / 登入
+========================================================= */
+let MODE=null, CURRENT_PERSON=null, CURRENT_TAB=null;
+function goHome(){
+  $('#appWrap').style.display='none';
+  ['coachPick','adminLogin'].forEach(id=>$('#'+id).style.display='none');
+  $('#homeScreen').style.display='flex';
+  MODE=null; CURRENT_PERSON=null;
+  renderHomePreview();
+}
+function publicRow(s){
+  const assist=[s.a1,s.a2,s.a3].filter(Boolean).join('、')||'—';
+  const cancelled=s.status==='取消';
+  return `<div class="prow${cancelled?' cancelled':''}">
+    <div class="prow-t">${esc(s.start)}<br>${esc(s.end)}</div>
+    <div style="flex:1;min-width:0">
+      <div class="prow-c">${esc(s.className)}${cancelled?' <span class="pill pill-red">取消</span>':''}</div>
+      <div class="prow-m">👤 主：<b>${esc(s.mainCoach||'—')}</b>｜助：${esc(assist)}</div>
+    </div>
+  </div>`;
+}
+function renderHomePreview(){
+  const el=$('#homePreview'); if(!el) return;
+  const t=todayStr();
+  const todayList=DB.schedules.filter(s=>s.date===t).sort((a,b)=>a.start.localeCompare(b.start));
+  const {start,end,days}=weekRange();
+  let html='<div class="preview-divider"></div>';
+  html+=`<div class="preview-h">📅 今日課表 <span>${t.slice(5)}（${weekdayOf(t)}）</span></div>`;
+  html+= todayList.length? todayList.map(publicRow).join('') : '<div class="preview-empty">今日尚無排班</div>';
+  html+=`<div class="preview-h" style="margin-top:16px">🗓️ 本週課表 <span>${start.slice(5)} ~ ${end.slice(5)}</span></div>`;
+  let any=false, wk='';
+  days.forEach(d=>{ const list=DB.schedules.filter(s=>s.date===d).sort((a,b)=>a.start.localeCompare(b.start)); if(!list.length) return; any=true;
+    wk+=`<div class="preview-day">${weekdayOf(d)}　${d.slice(5)}</div>`+list.map(publicRow).join(''); });
+  html+= any? wk : '<div class="preview-empty">本週尚無排班<br>請館長進後台「排班管理」新增，或用「固定週課表」一鍵產生本週</div>';
+  el.innerHTML=html;
+}
+function openCoachPick(){
+  $('#homeScreen').style.display='none';
+  $('#coachPickGrid').innerHTML = activePeople().map(p=>
+    `<div class="name-pick" onclick="enterCoach('${esc(p.name)}')">${esc(p.name)}<small>${esc(p.role)}</small></div>`).join('')
+    || '<div class="empty">尚無啟用人員，請館長先建立名單</div>';
+  $('#coachPick').style.display='flex';
+}
+function openAdminLogin(){
+  $('#homeScreen').style.display='none';
+  $('#adminPwIn').value='';
+  $('#adminLogin').style.display='flex';
+  setTimeout(()=>$('#adminPwIn').focus(),100);
+}
+function submitAdminPw(){
+  if($('#adminPwIn').value === DB.adminSettings.adminPw){ enterAdmin(); }
+  else { toast('密碼錯誤'); $('#adminPwIn').value=''; }
+}
+function enterCoach(name){ MODE='coach'; CURRENT_PERSON=name; $('#coachPick').style.display='none'; startApp(); }
+function enterAdmin(){ MODE='admin'; CURRENT_PERSON=null; $('#adminLogin').style.display='none'; startApp(); }
+
+/* =========================================================
+   分頁
+========================================================= */
+const COACH_TABS=[
+  {id:'c-today', label:'今日排班', icon:'📅'},
+  {id:'c-week',  label:'本週排班', icon:'🗓️'},
+  {id:'c-leave', label:'請假/代班', icon:'🔁'},
+  {id:'c-review',label:'課後復盤', icon:'📝'},
+  {id:'c-salary',label:'我的酬勞', icon:'💰'},
+];
+const ADMIN_TABS=[
+  {id:'a-dash',   label:'今日總覽', icon:'🏠'},
+  {id:'a-sched',  label:'排班管理', icon:'📋'},
+  {id:'a-month',  label:'月班表', icon:'📆'},
+  {id:'a-weekly', label:'固定週課表', icon:'🗓️'},
+  {id:'a-people', label:'教練名單', icon:'🧑‍🏫'},
+  {id:'a-class',  label:'班別設定', icon:'🏷️'},
+  {id:'a-pay',    label:'酬勞設定', icon:'⚙️'},
+  {id:'a-records',label:'上課紀錄', icon:'📒'},
+  {id:'a-coach-eval',label:'教練考核', icon:'🎯'},
+  {id:'a-settle', label:'酬勞結算', icon:'🧮'},
+  {id:'a-line',   label:'LINE回報', icon:'💬'},
+  {id:'a-data',   label:'資料管理', icon:'💾'},
+];
+const ROLE_PERMISSIONS={
+  '館長':{
+    tabs:ADMIN_TABS.map(t=>t.id),
+    actions:['viewSalaryTotal','manageSchedule','deleteSchedule','manageWeekly','confirmLeave','confirmSub','managePeople','manageClasses','managePay','manageRecords','viewCoachEval','settleSalary','lineSalary','manageData']
+  },
+  '主教練':{
+    tabs:['a-dash','a-sched','a-month','a-weekly','a-coach-eval','a-line'],
+    actions:['manageSchedule','manageWeekly','confirmLeave','viewCoachEval']
+  },
+  '次教練':{
+    tabs:['a-dash'],
+    actions:[]
+  },
+  '助教':{
+    tabs:[],
+    actions:[]
+  }
+};
+function currentRole(){ return MODE==='admin' ? '館長' : (personByName(CURRENT_PERSON)?.role || '助教'); }
+function rolePerm(){ return ROLE_PERMISSIONS[currentRole()] || ROLE_PERMISSIONS['助教']; }
+function hasPerm(action){ return currentRole()==='館長' || rolePerm().actions.includes(action); }
+function requirePerm(action, msg){ if(hasPerm(action)) return true; toast(msg||'此功能限授權管理者使用'); return false; }
+function tabsForCurrentUser(){
+  if(MODE==='admin') return ADMIN_TABS;
+  const allowed=new Set(rolePerm().tabs);
+  return [...COACH_TABS, ...ADMIN_TABS.filter(t=>allowed.has(t.id))];
+}
+function startApp(){
+  $('#appWrap').style.display='block';
+  const tabs = tabsForCurrentUser();
+  $('#roleBadge').textContent = MODE==='coach'
+    ? `${CURRENT_PERSON}（${currentRole()}）｜${rolePerm().tabs.length?'授權後台':'個人模式'}`
+    : '館長模式｜完整後台';
+  $('#tabNav').innerHTML = tabs.map((t,i)=>
+    `<button class="tab-btn${i===0?' active':''}" data-tab="${t.id}" onclick="switchTab('${t.id}')">${t.icon} ${t.label}</button>`).join('');
+  $('#panels').innerHTML = tabs.map(t=>`<div class="tab-panel" id="panel-${t.id}"></div>`).join('');
+  switchTab(tabs[0].id);
+  window.scrollTo(0,0);
+}
+function switchTab(id){
+  const tabs=tabsForCurrentUser();
+  if(!tabs.some(t=>t.id===id)){ toast('沒有權限開啟此分頁'); id=tabs[0].id; }
+  CURRENT_TAB=id;
+  document.querySelectorAll('.tab-btn').forEach(b=>b.classList.toggle('active', b.dataset.tab===id));
+  document.querySelectorAll('.tab-panel').forEach(p=>p.classList.remove('active'));
+  $('#panel-'+id).classList.add('active');
+  renderTab(id);
+  window.scrollTo(0,0);
+}
+function renderTab(id){
+  ({
+    'c-today':renderCoachToday, 'c-week':renderCoachWeek, 'c-leave':renderCoachLeave,
+    'c-review':renderReview, 'c-salary':renderCoachSalary,
+    'a-dash':renderDash, 'a-sched':renderSched, 'a-month':renderMonthSchedule, 'a-weekly':renderWeekly, 'a-people':renderPeople,
+    'a-class':renderClasses, 'a-pay':renderPay, 'a-records':renderRecords, 'a-coach-eval':renderCoachEval, 'a-settle':renderSettle,
+    'a-line':renderLine, 'a-data':renderData,
+  }[id]||(()=>{}))();
+}
+
+/* =========================================================
+   排班 entries：主教練 + 助教，各自一筆出席
+========================================================= */
+function buildEntries(s){
+  const arr=[];
+  if(s.mainCoach) arr.push({ person:s.mainCoach, slot:'主教練', payRole:s.payRole||'主教練' });
+  [s.a1,s.a2,s.a3].forEach((a,i)=>{ if(a) arr.push({ person:a, slot:'助教'+(i+1), payRole:'助教' }); });
+  return arr;
+}
+function ensureEntries(s){
+  if(!s.entries){
+    s.entries = buildEntries(s).map(e=>Object.assign(e,{ status:s.status||'已排班', late:false, isSub:false, subExtra:false, completed:false, salaryId:null }));
+  }
+  return s.entries;
+}
+function myEntry(s){ ensureEntries(s); return s.entries.find(e=>e.person===CURRENT_PERSON); }
+
+function completeEntry(schedId, person){
+  const s=DB.schedules.find(x=>x.id===schedId); if(!s) return;
+  const e=s.entries.find(x=>x.person===person); if(!e) return;
+  if(e.completed){ toast('已完成過此堂課'); return; }
+  if(s.status==='取消'){ toast('此堂課已取消'); return; }
+  e.completed=true; e.status='已上課';
+  const base=payBase(e.payRole);
+  const bonus=e.isSub && e.subExtra ? subAmt() : 0;
+  const deduct=e.late ? lateAmt() : 0;
+  const rec={ id:uid(), scheduleId:s.id, date:s.date, month:monthStr(s.date), className:s.className,
+    personName:person, role:e.payRole, base, bonus, deduct, net:base+bonus-deduct,
+    status:'未結算', note:(e.late?'遲到 ':'')+(e.isSub?'代班 ':''), paid:false };
+  e.salaryId=rec.id; DB.salaryRecords.push(rec);
+  if(e.slot==='主教練') s.status=e.late?'遲到':'已上課';
+  save(); toast('✅ 已完成上課，本堂實領 $'+fmtMoney(rec.net)); renderTab(CURRENT_TAB);
+}
+function toggleLate(schedId, person){
+  const s=DB.schedules.find(x=>x.id===schedId); const e=s.entries.find(x=>x.person===person);
+  e.late=!e.late;
+  if(e.salaryId){ const r=DB.salaryRecords.find(x=>x.id===e.salaryId); if(r){ r.deduct=e.late?lateAmt():0; r.net=r.base+r.bonus-r.deduct; r.note=(e.late?'遲到 ':'')+(e.isSub?'代班 ':''); } }
+  save(); toast(e.late?'已標記遲到（扣 $'+fmtMoney(lateAmt())+'）':'已取消遲到'); renderTab(CURRENT_TAB);
+}
+
+/* =========================================================
+   教練端：今日 / 本週
+========================================================= */
+function schedulesOfPerson(person, dateFilter){
+  return DB.schedules.filter(s=>{ ensureEntries(s);
+    if(dateFilter && s.date!==dateFilter) return false;
+    return s.entries.some(e=>e.person===person);
+  }).sort((a,b)=>(a.date+a.start).localeCompare(b.date+b.start));
+}
+function statusPill(status){
+  const map={'已排班':'pill-gray','已上課':'pill-green','請假':'pill-purple','代班':'pill-blue','遲到':'pill-orange','取消':'pill-red'};
+  return `<span class="pill ${map[status]||'pill-gray'}">${esc(status)}</span>`;
+}
+function coachSchedCard(s, interactive){
+  const e=myEntry(s);
+  const cls = s.status==='取消'?'cancel': e.completed?'done': e.late?'late':'';
+  const assist=[s.a1,s.a2,s.a3].filter(Boolean).join('、')||'—';
+  const type=s.courseType||'一般上課';
+  let actions='';
+  if(interactive){
+    if(s.status==='取消'){ actions=`<span class="pill pill-red">本堂已取消</span>`; }
+    else if(e.completed){
+      actions=`<span class="pill pill-green">✅ 已完成</span>${e.late?'<span class="pill pill-orange">遲到</span>':''}${e.isSub?'<span class="pill pill-blue">代班</span>':''}
+        <button class="btn btn-secondary btn-xs" onclick="gotoReviewFor('${s.id}')">📝 填復盤</button>`;
+    } else {
+      actions=`
+        <button class="btn btn-green btn-xs" onclick="completeEntry('${s.id}','${esc(CURRENT_PERSON)}')">✅ 完成上課</button>
+        <button class="btn btn-orange btn-xs" onclick="toggleLate('${s.id}','${esc(CURRENT_PERSON)}')">${e.late?'⏰ 已遲到':'⏰ 遲到註記'}</button>
+        <button class="btn btn-secondary btn-xs" onclick="openLeaveModal('${s.id}')">🙋 請假</button>
+        <button class="btn btn-secondary btn-xs" onclick="openSubModal('${s.id}')">🔁 代班</button>
+        <button class="btn btn-secondary btn-xs" onclick="gotoReviewFor('${s.id}')">📝 復盤</button>`;
+    }
+  }
+  return `<div class="card ${cls}">
+    <div class="card-top">
+      <div><div class="card-time">${esc(s.start)}–${esc(s.end)}</div><div class="card-class">${esc(s.className)} ${type!=='一般上課'?`<span class="pill pill-blue">${esc(type)}</span>`:''}</div></div>
+      <div style="text-align:right">${statusPill(e.completed?'已上課':s.status)}<div class="card-meta">${esc(e.payRole)}｜基本 $${fmtMoney(payBase(e.payRole))}</div></div>
+    </div>
+    <div class="card-meta">📅 ${esc(s.date)}（${esc(s.weekday)}）｜主教練：<b>${esc(s.mainCoach||'—')}</b>｜助教：${esc(assist)}<br>📖 ${esc(s.content||'—')}${s.note?'｜備註：'+esc(s.note):''}</div>
+    ${actions?`<div class="card-actions">${actions}</div>`:''}
+  </div>`;
+}
+function renderCoachToday(){
+  const t=todayStr();
+  const list=schedulesOfPerson(CURRENT_PERSON, t);
+  const done=list.filter(s=>myEntry(s).completed).length;
+  const money=list.filter(s=>myEntry(s).completed).reduce((a,s)=>{const r=DB.salaryRecords.find(x=>x.id===myEntry(s).salaryId);return a+(r?r.net:0);},0);
+  $('#panel-c-today').innerHTML=`
+  <div class="section"><div class="section-header"><div class="section-title">📅 ${esc(CURRENT_PERSON)}的今日排班</div><span class="mini">${t}（${weekdayOf(t)}）</span></div>
+    <div class="section-body"><div class="dash-grid g3">
+      <div class="stat"><div class="num">${list.length}</div><div class="cap">今日堂數</div></div>
+      <div class="stat"><div class="num good">${done}</div><div class="cap">已完成</div></div>
+      <div class="stat"><div class="num blue">$${fmtMoney(money)}</div><div class="cap">今日酬勞</div></div>
+    </div></div>
+  </div>
+  <div style="margin:0 16px">${ list.length? list.map(s=>coachSchedCard(s,true)).join('') : '<div class="empty">今日沒有你的排班 🌙</div>' }</div>`;
+}
+function weekRange(){
+  const now=new Date(); const day=now.getDay(); const diff=(day===0?-6:1-day);
+  const mon=new Date(now); mon.setDate(now.getDate()+diff);
+  const days=[]; for(let i=0;i<7;i++){ const d=new Date(mon); d.setDate(mon.getDate()+i);
+    days.push(d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0')+'-'+String(d.getDate()).padStart(2,'0')); }
+  return { start:days[0], end:days[6], days };
+}
+function renderCoachWeek(){
+  const {start,end,days}=weekRange();
+  let html=`<div class="section"><div class="section-header"><div class="section-title">🗓️ ${esc(CURRENT_PERSON)}的本週排班</div><span class="mini">${start.slice(5)} ~ ${end.slice(5)}</span></div><div class="section-body section-hint">顯示本週（週一～週日）你被排到的所有課程。</div></div>`;
+  let any=false;
+  days.forEach(d=>{ const list=schedulesOfPerson(CURRENT_PERSON, d); if(!list.length) return; any=true;
+    html+=`<div class="section"><div class="section-header"><div class="section-title">${weekdayOf(d)}　${d.slice(5)}</div></div>
+      <div class="section-body" style="padding-top:6px">${list.map(s=>coachSchedCard(s,d===todayStr())).join('')}</div></div>`; });
+  if(!any) html+='<div class="empty">本週沒有你的排班</div>';
+  $('#panel-c-week').innerHTML=html;
+}
+
+/* =========================================================
+   教練端：請假 / 代班
+========================================================= */
+function openLeaveModal(schedId){
+  const s=schedId?DB.schedules.find(x=>x.id===schedId):null;
+  openModal('🙋 請假回報', `
+    <div class="form-row"><label class="form-label">請假日期</label><input id="lv_date" type="date" class="form-input" value="${s?s.date:todayStr()}"></div>
+    <div class="form-row"><label class="form-label">班別</label><input id="lv_class" class="form-input" value="${s?esc(s.className):''}" placeholder="班別名稱"></div>
+    <div class="form-row"><label class="form-label">原排班人員</label><input id="lv_person" class="form-input" value="${esc(CURRENT_PERSON||'')}"></div>
+    <div class="form-row"><label class="form-label">請假原因</label><textarea id="lv_reason" class="form-textarea" placeholder="例：身體不適 / 家庭因素"></textarea></div>
+    <div class="form-grid">
+      <div class="form-row"><label class="form-label">是否已找到代班</label>
+        <select id="lv_found" class="form-select"><option value="否">尚未找到</option><option value="是">已找到</option></select></div>
+      <div class="form-row"><label class="form-label">代班人員</label>
+        <select id="lv_sub" class="form-select"><option value="">—</option>${activePeople().map(p=>`<option>${esc(p.name)}</option>`).join('')}</select></div>
+    </div>
+    <div class="form-row"><label class="form-label">備註</label><input id="lv_note" class="form-input"></div>`,
+    [{label:'送出請假',cls:'btn-primary',fn:()=>{
+      const rec={ id:uid(), date:$('#lv_date').value, className:$('#lv_class').value, originPerson:$('#lv_person').value,
+        reason:$('#lv_reason').value, foundSub:$('#lv_found').value, subPerson:$('#lv_sub').value, note:$('#lv_note').value,
+        status:'請假待確認', scheduleId:schedId||'' };
+      DB.leaveRequests.push(rec);
+      if(schedId){ const e=myEntry(s); if(e) e.status='請假'; s.status='請假'; }
+      save(); closeModal(); toast('已送出請假，待館長確認'); renderTab(CURRENT_TAB);
+    }},{label:'取消',cls:'btn-ghost',fn:closeModal}]);
+}
+function openSubModal(schedId){
+  const s=schedId?DB.schedules.find(x=>x.id===schedId):null;
+  openModal('🔁 代班回報', `
+    <div class="note">代班是否加給，由館長後台決定。</div>
+    <div class="form-row"><label class="form-label">日期</label><input id="sb_date" type="date" class="form-input" value="${s?s.date:todayStr()}"></div>
+    <div class="form-row"><label class="form-label">班別</label><input id="sb_class" class="form-input" value="${s?esc(s.className):''}"></div>
+    <div class="form-row"><label class="form-label">原教練</label><input id="sb_origin" class="form-input" value="${s?esc(s.mainCoach):''}"></div>
+    <div class="form-row"><label class="form-label">代班教練</label><input id="sb_sub" class="form-input" value="${esc(CURRENT_PERSON||'')}"></div>
+    <div class="form-row"><label class="form-label">備註</label><input id="sb_note" class="form-input"></div>`,
+    [{label:'送出代班回報',cls:'btn-primary',fn:()=>{
+      const rec={ id:uid(), date:$('#sb_date').value, className:$('#sb_class').value, originCoach:$('#sb_origin').value,
+        subCoach:$('#sb_sub').value, extraPay:false, status:'待確認', note:$('#sb_note').value, scheduleId:schedId||'' };
+      DB.substituteRecords.push(rec);
+      if(schedId){ const e=myEntry(s); if(e) e.isSub=true; }
+      save(); closeModal(); toast('已送出代班回報'); renderTab(CURRENT_TAB);
+    }},{label:'取消',cls:'btn-ghost',fn:closeModal}]);
+}
+function renderCoachLeave(){
+  const myLeaves=DB.leaveRequests.filter(l=>l.originPerson===CURRENT_PERSON).slice().reverse();
+  const mySubs=DB.substituteRecords.filter(s=>s.subCoach===CURRENT_PERSON).slice().reverse();
+  $('#panel-c-leave').innerHTML=`
+  <div class="section"><div class="section-header"><div class="section-title">🔁 請假 / 代班回報</div></div>
+    <div class="section-body"><div class="btns2">
+      <button class="btn btn-primary" onclick="openLeaveModal('')">🙋 我要請假</button>
+      <button class="btn btn-blue" onclick="openSubModal('')">🔁 回報代班</button>
+    </div></div>
+  </div>
+  <div class="section"><div class="section-header"><div class="section-title">📜 我的請假紀錄</div></div>
+    <div class="section-body">${ myLeaves.length? myLeaves.map(l=>`
+      <div class="list-item"><div class="li-top"><div class="li-name">${esc(l.date)}｜${esc(l.className)}</div>${statusBadge(l.status)}</div>
+      <div class="li-sub">原因：${esc(l.reason||'—')}｜找到代班：${esc(l.foundSub)} ${l.subPerson?'（'+esc(l.subPerson)+'）':''}</div></div>`).join('') : '<div class="empty">尚無請假紀錄</div>' }</div>
+  </div>
+  <div class="section"><div class="section-header"><div class="section-title">📜 我的代班紀錄</div></div>
+    <div class="section-body">${ mySubs.length? mySubs.map(s=>`
+      <div class="list-item"><div class="li-top"><div class="li-name">${esc(s.date)}｜${esc(s.className)}</div>${s.extraPay?'<span class="pill pill-green">有加給</span>':statusBadge(s.status)}</div>
+      <div class="li-sub">原教練：${esc(s.originCoach||'—')}｜備註：${esc(s.note||'—')}</div></div>`).join('') : '<div class="empty">尚無代班紀錄</div>' }</div>
+  </div>`;
+}
+function statusBadge(s){
+  const map={'請假待確認':'pill-orange','已確認':'pill-green','待確認':'pill-orange','已加給':'pill-green'};
+  return `<span class="pill ${map[s]||'pill-gray'}">${esc(s)}</span>`;
+}
+
+/* =========================================================
+   教練端：我的酬勞
+========================================================= */
+function renderCoachSalary(){
+  const m=monthStr();
+  const recs=DB.salaryRecords.filter(r=>r.personName===CURRENT_PERSON && r.month===m);
+  const lessons=recs.length;
+  const subCount=DB.substituteRecords.filter(s=>s.subCoach===CURRENT_PERSON && monthStr(s.date)===m).length;
+  const lateCount=recs.filter(r=>r.deduct>0).length;
+  const leaveCount=DB.leaveRequests.filter(l=>l.originPerson===CURRENT_PERSON && monthStr(l.date)===m).length;
+  const total=recs.reduce((a,r)=>a+r.net,0);
+  $('#panel-c-salary').innerHTML=`
+  <div class="section"><div class="section-header"><div class="section-title">💰 ${esc(CURRENT_PERSON)}的本月酬勞</div><span class="mini">${m}</span></div>
+    <div class="section-body"><div class="dash-grid g3">
+      <div class="stat"><div class="num">${lessons}</div><div class="cap">上課堂數</div></div>
+      <div class="stat"><div class="num blue">${subCount}</div><div class="cap">代班堂數</div></div>
+      <div class="stat"><div class="num warn">${lateCount}</div><div class="cap">遲到次數</div></div>
+      <div class="stat"><div class="num">${leaveCount}</div><div class="cap">請假次數</div></div>
+      <div class="stat" style="grid-column:span 2"><div class="num money">$${fmtMoney(total)}</div><div class="cap">本月累積實領酬勞</div></div>
+    </div></div>
+  </div>
+  <div class="section"><div class="section-header"><div class="section-title">📒 酬勞明細</div></div>
+    <div class="section-body">${ recs.length? recs.slice().reverse().map(r=>`
+      <div class="list-item"><div class="li-top"><div class="li-name">${esc(r.date)}｜${esc(r.className)}</div><div class="settle-net money">$${fmtMoney(r.net)}</div></div>
+      <div class="li-sub">${esc(r.role)}｜基本 $${fmtMoney(r.base)}${r.bonus?'｜加給 +$'+fmtMoney(r.bonus):''}${r.deduct?'｜扣款 -$'+fmtMoney(r.deduct):''}｜${esc(r.status)}${r.paid?'（已付款）':''}</div></div>`).join('') : '<div class="empty">本月尚無酬勞紀錄，完成上課後會自動產生</div>' }</div>
+  </div>
+  <div class="note">⚠️ 你只能看到自己的酬勞；酬勞設定與其他人酬勞由館長後台管理。</div>`;
+}
+
+/* =========================================================
+   課後復盤 KPI
+========================================================= */
+const SIX=['教學設計','技術示範','班級控場','學生互動','安全管理','課後延續'];
+const QUICK_CLASSES=['幼幼班','基礎班','選手班','品勢班','週六班','黑帶培訓班','暑期班'];
+const LESSON_TOPICS=['基本動作','步伐','體能','品勢','對練','踢靶','反應','柔軟度','核心','禮貌紀律'];
+const QUICK_SCORE_ITEMS=[
+  ['overall','整體表現'],
+  ['focus','專注度'],
+  ['order','秩序'],
+  ['fitness','體能'],
+  ['technique','技術完成度']
+];
+const STUDENT_PERF=['優秀','穩定','普通','需提醒'];
+const SELF_CHECK=[
+  ['prep','課前準備'],
+  ['punctual','準時到課'],
+  ['attitude','上課態度'],
+  ['reflection','課後反思']
+];
+let reviewState={
+  scores:[3,3,3,3,3,3],
+  quick:{overall:3,focus:3,order:3,fitness:3,technique:3},
+  self:{prep:3,punctual:3,attitude:3,reflection:3},
+  topics:[],
+  studentRows:[],
+  quality:3,
+  schedId:''
+};
+function gotoReviewFor(schedId){ reviewState.schedId=schedId; switchTab('c-review'); }
+function activeStudents(){ return (DB.students||[]).filter(s=>s.active!==false); }
+function toggleTopic(topic, el){
+  if(reviewState.topics.includes(topic)) reviewState.topics=reviewState.topics.filter(t=>t!==topic);
+  else reviewState.topics.push(topic);
+  if(el) el.classList.toggle('btn-gold', reviewState.topics.includes(topic));
+  if(el) el.classList.toggle('btn-secondary', !reviewState.topics.includes(topic));
+}
+function addStudentTrackRow(data){
+  const idx=reviewState.studentRows.length;
+  reviewState.studentRows.push(data||{});
+  const wrap=$('#rv_students'); if(!wrap) return;
+  const studentOpts=activeStudents().map(s=>`<option ${data&&data.studentName===s.name?'selected':''}>${esc(s.name)}</option>`).join('');
+  wrap.insertAdjacentHTML('beforeend', `
+    <div class="list-item" id="rv_stu_${idx}">
+      <div class="li-top"><div class="li-name">學生個別追蹤 #${idx+1}</div><button class="icon-btn del" onclick="removeStudentTrackRow(${idx})">×</button></div>
+      <div class="form-grid" style="margin-top:10px">
+        <div class="form-row"><label class="form-label">學生姓名</label><select class="form-select stu-name"><option value="">—</option>${studentOpts}</select></div>
+        <div class="form-row"><label class="form-label">今日表現</label><select class="form-select stu-perf">${STUDENT_PERF.map(x=>`<option>${x}</option>`).join('')}</select></div>
       </div>
-      <button class="btn ghost small" onclick="logout()">登出</button>
-    </header>
-
-    <nav id="tabs" class="tabs"></nav>
-
-    <section id="reviewTab" class="tab-panel"></section>
-    <section id="recordsTab" class="tab-panel"></section>
-    <section id="dashboardTab" class="tab-panel"></section>
-  </main>
-
-  <div id="modal" class="modal hidden">
-    <div class="modal-card">
-      <div class="modal-head">
-        <h3 id="modalTitle"></h3>
-        <button class="x" onclick="closeModal()">×</button>
+      <div class="form-grid">
+        <div class="form-row"><label class="form-label">技術問題</label><input class="form-input stu-tech" placeholder="例：收腳、重心、轉身"></div>
+        <div class="form-row"><label class="form-label">態度問題</label><input class="form-input stu-att" placeholder="例：禮貌、積極度"></div>
+        <div class="form-row"><label class="form-label">專注問題</label><input class="form-input stu-focus" placeholder="例：容易分心、等待不穩"></div>
+        <div class="form-row"><label class="form-label">通知家長</label><select class="form-select stu-parent"><option>否</option><option>是</option></select></div>
       </div>
-      <div id="modalBody" class="modal-body"></div>
+      <div class="form-row"><label class="form-label">下次提醒事項</label><input class="form-input stu-next" placeholder="下次課前提醒一句話"></div>
+      <div class="form-row"><label class="form-label">教練備註</label><textarea class="form-textarea stu-note"></textarea></div>
+    </div>`);
+}
+function removeStudentTrackRow(idx){ const el=$('#rv_stu_'+idx); if(el) el.remove(); }
+function collectStudentTracks(reviewId){
+  return Array.from(document.querySelectorAll('#rv_students .list-item')).map(el=>({
+    id:uid(), reviewId,
+    date:$('#rv_date').value, className:$('#rv_class').value, coach:$('#rv_coach').value,
+    studentName:el.querySelector('.stu-name')?.value||'',
+    performance:el.querySelector('.stu-perf')?.value||'',
+    techIssue:el.querySelector('.stu-tech')?.value||'',
+    attitudeIssue:el.querySelector('.stu-att')?.value||'',
+    focusIssue:el.querySelector('.stu-focus')?.value||'',
+    nextReminder:el.querySelector('.stu-next')?.value||'',
+    notifyParent:(el.querySelector('.stu-parent')?.value||'否')==='是',
+    note:el.querySelector('.stu-note')?.value||'',
+    ts:Date.now()
+  })).filter(r=>r.studentName);
+}
+function renderReview(){
+  const s=reviewState.schedId?DB.schedules.find(x=>x.id===reviewState.schedId):null;
+  const classOpts=QUICK_CLASSES.map(c=>`<option ${s&&s.className===c?'selected':''}>${esc(c)}</option>`).join('');
+  const peopleOpts=v=>`<option value="">—</option>`+activePeople().map(p=>`<option ${v===p.name?'selected':''}>${esc(p.name)}</option>`).join('');
+  $('#panel-c-review').innerHTML=`
+  <div class="section"><div class="section-header"><div class="section-title">📝 課後復盤 KPI</div></div>
+    <div class="section-body">
+      <div class="form-grid">
+        <div class="form-row"><label class="form-label">教練</label><input id="rv_coach" class="form-input" value="${esc(CURRENT_PERSON||'')}" readonly></div>
+        <div class="form-row"><label class="form-label">日期</label><input id="rv_date" type="date" class="form-input" value="${s?s.date:todayStr()}"></div>
+        <div class="form-row"><label class="form-label">班別</label><select id="rv_class" class="form-select">${classOpts}</select></div>
+        <div class="form-row"><label class="form-label">助教</label><select id="rv_assistant" class="form-select">${peopleOpts(s?[s.a1,s.a2,s.a3].filter(Boolean)[0]:'')}</select></div>
+        <div class="form-row"><label class="form-label">學生人數</label><input id="rv_count" type="number" class="form-input" placeholder="例：18"></div>
+      </div>
+      <div class="form-row"><label class="form-label">今日課程主題（可多選）</label>
+        <div class="btn-row">${LESSON_TOPICS.map(t=>`<button type="button" class="btn btn-secondary btn-xs" onclick="toggleTopic('${t}',this)">${t}</button>`).join('')}</div></div>
+      <div class="form-row"><label class="form-label">今日上課內容</label><textarea id="rv_content" class="form-textarea" placeholder="熱身 / 主課程 / 體能 / 技術 / 檢測">${s?esc(s.content||''):''}</textarea></div>
     </div>
   </div>
+  <div class="section"><div class="section-header"><div class="section-title">⚡ 課後快速評分</div></div>
+    <div class="section-body" id="rv_quick_scores"></div>
+  </div>
+  <div class="section"><div class="section-header"><div class="section-title">👤 學生個別追蹤</div><button class="btn btn-gold btn-xs" onclick="addStudentTrackRow()">＋ 新增學生</button></div>
+    <div class="section-body">
+      <div class="section-hint">只記需要被看見或下次要提醒的學生；沒有個別狀況可略過。</div>
+      <div id="rv_students"></div>
+    </div>
+  </div>
+  <div class="section"><div class="section-header"><div class="section-title">📘 備課與教學目標</div></div>
+    <div class="section-body">
+      <div class="form-row"><label class="form-label">本堂課核心目標（只寫 1-2 個）</label><textarea id="rv_goal" class="form-textarea" placeholder="例：前踢收腳速度、品勢轉身穩定度"></textarea></div>
+      <div class="form-row"><label class="form-label">課前備課重點 / 教法設計</label><textarea id="rv_plan" class="form-textarea" placeholder="例：先示範錯誤動作，再用分解練習修正"></textarea></div>
+      <div class="form-row"><label class="form-label">本堂預計觀察的學生或問題</label><textarea id="rv_focus" class="form-textarea" placeholder="例：新生注意力、黃帶組重心、容易受傷動作"></textarea></div>
+      <div class="form-row"><label class="form-label">上次改善事項是否有延續</label><textarea id="rv_follow" class="form-textarea" placeholder="例：上次說要縮短講解時間，今天用口令+示範控制在 2 分鐘內"></textarea></div>
+    </div>
+  </div>
+  <div class="section"><div class="section-header"><div class="section-title">🛡️ 六維能力評分</div></div><div class="section-body" id="rv_six"></div></div>
+  <div class="section"><div class="section-header"><div class="section-title">🪞 教練自評</div></div>
+    <div class="section-body">
+      <div class="section-hint">自評不是為了扣分，是讓教練每天誠實看見自己的課前、課中、課後狀態。</div>
+      <div id="rv_self"></div>
+      <div class="form-row"><label class="form-label">課前準備自評說明</label><textarea id="rv_prep_note" class="form-textarea" placeholder="今天是否有先想好目標、流程、重點提醒？"></textarea></div>
+      <div class="form-row"><label class="form-label">準時與課前狀態說明</label><textarea id="rv_punctual_note" class="form-textarea" placeholder="是否提前到場？器材、場地、學生集合是否準備好？"></textarea></div>
+      <div class="form-row"><label class="form-label">上課態度自評說明</label><textarea id="rv_attitude_note" class="form-textarea" placeholder="今天是否有耐心、精神、尊重學生、保持標準？"></textarea></div>
+      <div class="form-row"><label class="form-label">課後反思自評說明</label><textarea id="rv_reflection_note" class="form-textarea" placeholder="課後是否有看見問題、提出修正、準備下次改法？"></textarea></div>
+    </div>
+  </div>
+  <div class="section"><div class="section-header"><div class="section-title">⭐ 今日課程品質</div></div>
+    <div class="section-body"><div class="score-row"><div class="score-row-top"><span class="score-name">課程品質分數</span><span class="score-pill" id="rv_qpill">3.0</span></div>
+      <input type="range" min="1" max="5" step="0.5" value="3" oninput="reviewState.quality=+this.value;$('#rv_qpill').textContent=(+this.value).toFixed(1);calcReview()"></div></div>
+  </div>
+  <div class="section"><div class="section-header"><div class="section-title">📊 評量結果</div></div>
+    <div class="section-body">
+      <div style="display:flex;align-items:center;gap:16px">
+        <div class="grade-badge"><div class="grade-letter" id="rv_grade">B</div><div class="grade-pct" id="rv_pct">0%</div></div>
+        <div style="flex:1"><div style="font-size:28px;font-weight:900;color:var(--accent)"><span id="rv_total">3.0</span><span style="font-size:14px;color:var(--text-dim)"> / 5.0</span></div>
+        <div class="mini" id="rv_words">完成評分後產出總結</div></div>
+      </div>
+      <div class="radar-wrap"><svg id="rv_radar" viewBox="0 0 320 300"></svg></div>
+    </div>
+  </div>
+  <div class="section"><div class="section-header"><div class="section-title">🗒️ 課後檢討</div></div>
+    <div class="section-body">
+      <div class="form-row"><label class="form-label">今日最成功的一件事 ✅</label><textarea id="rv_best" class="form-textarea"></textarea></div>
+      <div class="form-row"><label class="form-label">最需要改善的一件事 ⚠️</label><textarea id="rv_worst" class="form-textarea"></textarea></div>
+      <div class="form-row"><label class="form-label">下次課程建議</label><textarea id="rv_course_next" class="form-textarea" placeholder="下次課程可以怎麼安排"></textarea></div>
+      <div class="form-row"><label class="form-label">是否有受傷或特殊狀況</label><textarea id="rv_special" class="form-textarea" placeholder="無 / 有，請簡要說明"></textarea></div>
+      <div class="form-row"><label class="form-label">具體證據（學生反應 / 動作變化 / 課堂狀況）</label><textarea id="rv_evidence" class="form-textarea" placeholder="例：分組後等待時間變短；3 位學生能自己說出修正點"></textarea></div>
+      <div class="form-row"><label class="form-label">下次只改一件事 🎯</label><textarea id="rv_next" class="form-textarea"></textarea></div>
+      <div class="form-row"><label class="form-label">下次課備課調整</label><textarea id="rv_next_plan" class="form-textarea" placeholder="例：把熱身改成反應遊戲，接到主課技術"></textarea></div>
+      <div class="form-row"><label class="form-label">下次量化追蹤指標</label><input id="rv_metric" class="form-input" placeholder="例：前踢連續 10 下收腳不落地；講解每段不超過 2 分鐘"></div>
+      <div class="form-row"><label class="form-label">是否需要館長 / 主教練協助</label><select id="rv_support" class="form-select"><option>不需要</option><option>需要觀課</option><option>需要協助設計課表</option><option>需要協助處理學生/家長</option></select></div>
+    </div>
+  </div>
+  <div class="section"><div class="section-header"><div class="section-title">💾 儲存與 LINE</div></div>
+    <div class="section-body">
+      <button class="btn btn-primary btn-block" onclick="saveReview()" style="margin-bottom:10px">💾 儲存復盤紀錄</button>
+      <div class="btns2">
+        <button class="btn btn-secondary btn-sm" onclick="copyReview()">📋 複製復盤</button>
+        <button class="btn btn-line btn-sm" onclick="shareLine(reviewReport())">💬 LINE 分享</button>
+      </div>
+      <div id="rv_report" class="result" style="margin-top:10px">填完後按儲存產生回報內容。</div>
+    </div>
+  </div>`;
+  reviewState.scores=[3,3,3,3,3,3]; reviewState.quick={overall:3,focus:3,order:3,fitness:3,technique:3}; reviewState.self={prep:3,punctual:3,attitude:3,reflection:3}; reviewState.topics=[]; reviewState.studentRows=[]; reviewState.quality=3;
+  $('#rv_quick_scores').innerHTML=QUICK_SCORE_ITEMS.map(([key,name])=>`
+    <div class="score-row"><div class="score-row-top"><span class="score-name">${name}</span><span class="score-pill" id="rv_q_${key}">3</span></div>
+      <input type="range" min="1" max="5" step="1" value="3" oninput="reviewState.quick.${key}=+this.value;$('#rv_q_${key}').textContent=this.value;calcReview()"></div>`).join('');
+  $('#rv_six').innerHTML=SIX.map((n,i)=>`
+    <div class="score-row"><div class="score-row-top"><span class="score-name">${n}</span><span class="score-pill" id="rv_s${i}">3</span></div>
+      <input type="range" min="1" max="5" step="1" value="3" oninput="reviewState.scores[${i}]=+this.value;$('#rv_s${i}').textContent=this.value;calcReview()"></div>`).join('');
+  $('#rv_self').innerHTML=SELF_CHECK.map(([key,name])=>`
+    <div class="score-row"><div class="score-row-top"><span class="score-name">${name}</span><span class="score-pill" id="rv_self_${key}">3</span></div>
+      <input type="range" min="1" max="5" step="1" value="3" oninput="reviewState.self.${key}=+this.value;$('#rv_self_${key}').textContent=this.value;calcReview()"></div>`).join('');
+  calcReview();
+}
+function calcReview(){
+  const avg=reviewState.scores.reduce((a,b)=>a+b,0)/6;
+  const quickAvg=Object.values(reviewState.quick).reduce((a,b)=>a+b,0)/5;
+  const selfAvg=Object.values(reviewState.self).reduce((a,b)=>a+b,0)/4;
+  const total=quickAvg*0.45 + avg*0.30 + reviewState.quality*0.15 + selfAvg*0.10;
+  const pct=Math.round(total/5*100);
+  let g='D'; if(total>=4.5)g='S'; else if(total>=4)g='A'; else if(total>=3.5)g='B'; else if(total>=2.5)g='C';
+  $('#rv_total').textContent=total.toFixed(1); $('#rv_grade').textContent=g; $('#rv_pct').textContent=pct+'%';
+  const max=SIX[reviewState.scores.indexOf(Math.max(...reviewState.scores))];
+  const min=SIX[reviewState.scores.indexOf(Math.min(...reviewState.scores))];
+  $('#rv_words').innerHTML=`等級 <b style="color:var(--accent)">${g}</b>｜快速平均：${quickAvg.toFixed(1)}｜強項：${max}｜待加強：${min}｜自評：${selfAvg.toFixed(1)}`;
+  drawRadar();
+}
+function drawRadar(){
+  const svg=$('#rv_radar'); if(!svg) return;
+  const cx=160,cy=150,R=100,N=6;
+  const pt=(i,r)=>{ const a=-Math.PI/2 + i*2*Math.PI/N; return [cx+r*Math.cos(a), cy+r*Math.sin(a)]; };
+  let g='';
+  for(let ring=1;ring<=4;ring++){ const r=R*ring/4; let pts=''; for(let i=0;i<N;i++){const[x,y]=pt(i,r);pts+=x+','+y+' ';} g+=`<polygon points="${pts}" fill="none" stroke="#262d44" stroke-width="1"/>`; }
+  for(let i=0;i<N;i++){ const[x,y]=pt(i,R); g+=`<line x1="${cx}" y1="${cy}" x2="${x}" y2="${y}" stroke="#262d44" stroke-width="1"/>`;
+    const[lx,ly]=pt(i,R+24); g+=`<text x="${lx}" y="${ly}" fill="#b2bacb" font-size="11" text-anchor="middle" dominant-baseline="middle">${SIX[i]}</text>`; }
+  let pts=''; for(let i=0;i<N;i++){ const[x,y]=pt(i,R*reviewState.scores[i]/5); pts+=x+','+y+' '; }
+  g+=`<polygon points="${pts}" fill="rgba(212,175,55,.28)" stroke="#d4af37" stroke-width="2"/>`;
+  svg.innerHTML=g;
+}
+function reviewReport(){
+  const coach=$('#rv_coach').value, date=$('#rv_date').value, cls=$('#rv_class').value;
+  const total=$('#rv_total').textContent, g=$('#rv_grade').textContent;
+  return `【雄麒道館課後回報】
+日期：${date}（${weekdayOf(date)}）
+班別：${cls}
+教練：${coach}
 
-  <?!= include('JavaScript'); ?>
+今日訓練主題：${reviewState.topics.join('、')||'—'}
+整體表現：${reviewState.quick.overall}/5（${g} 級）
+今日亮點：${$('#rv_best').value||'孩子們今天都有完成重點練習。'}
+需要加強：${$('#rv_worst').value||'下次會持續提醒動作細節與專注度。'}
+下次目標：${$('#rv_course_next').value||$('#rv_next').value||'穩定完成今天的訓練重點。'}
+特殊狀況：${$('#rv_special').value||'無'}
+
+雄麒道館和孩子一起進步。`;
+}
+function saveReview(){
+  const required=[
+    ['rv_goal','請填寫本堂課核心目標'],
+    ['rv_plan','請填寫課前備課重點'],
+    ['rv_content','請填寫今日上課內容'],
+    ['rv_prep_note','請填寫課前準備自評說明'],
+    ['rv_punctual_note','請填寫準時與課前狀態說明'],
+    ['rv_attitude_note','請填寫上課態度自評說明'],
+    ['rv_reflection_note','請填寫課後反思自評說明'],
+    ['rv_best','請填寫今日最成功的一件事'],
+    ['rv_worst','請填寫最需要改善的一件事'],
+    ['rv_evidence','請填寫具體證據'],
+    ['rv_next','請填寫下次只改一件事'],
+    ['rv_metric','請填寫下次量化追蹤指標']
+  ];
+  if(!reviewState.topics.length){ toast('請至少選擇一個今日課程主題'); return; }
+  for(const [id,msg] of required){ if(!$('#'+id).value.trim()){ toast(msg); $('#'+id).focus(); return; } }
+  const reviewId=uid();
+  const parentText=reviewReport();
+  const studentTracks=collectStudentTracks(reviewId);
+  const rec={ id:reviewId, date:$('#rv_date').value, coach:$('#rv_coach').value, assistant:$('#rv_assistant').value, className:$('#rv_class').value,
+    count:$('#rv_count').value, content:$('#rv_content').value, topics:[...reviewState.topics], quick:Object.assign({},reviewState.quick),
+    courseNext:$('#rv_course_next').value, special:$('#rv_special').value,
+    scores:[...reviewState.scores], quality:reviewState.quality,
+    self:Object.assign({},reviewState.self), selfNotes:{
+      prep:$('#rv_prep_note').value,
+      punctual:$('#rv_punctual_note').value,
+      attitude:$('#rv_attitude_note').value,
+      reflection:$('#rv_reflection_note').value
+    },
+    total:+$('#rv_total').textContent, grade:$('#rv_grade').textContent,
+    goal:$('#rv_goal').value, plan:$('#rv_plan').value, focus:$('#rv_focus').value, follow:$('#rv_follow').value,
+    best:$('#rv_best').value, worst:$('#rv_worst').value, evidence:$('#rv_evidence').value,
+    next:$('#rv_next').value, nextPlan:$('#rv_next_plan').value, metric:$('#rv_metric').value,
+    support:$('#rv_support').value, parentReport:parentText, ts:Date.now() };
+  DB.reviews.push(rec); save();
+  DB.studentRecords = DB.studentRecords || [];
+  DB.parentReports = DB.parentReports || [];
+  DB.studentRecords.push(...studentTracks);
+  DB.parentReports.push({ id:uid(), reviewId, date:rec.date, className:rec.className, coach:rec.coach, text:parentText, sent:false, ts:Date.now() });
+  save();
+  $('#rv_report').textContent=parentText;
+  toast('✅ 復盤已儲存');
+}
+function copyReview(){ const t=reviewReport(); $('#rv_report').textContent=t; copyText(t); }
+
+/* =========================================================
+   館長：教練考核 / 復盤追蹤
+========================================================= */
+function reviewsInMonth(m){ return DB.reviews.filter(r=>(r.date||'').slice(0,7)===m); }
+function completedCoachLessonsInMonth(name,m){
+  let count=0;
+  DB.schedules.forEach(s=>{ ensureEntries(s); if((s.date||'').slice(0,7)!==m) return;
+    count+=s.entries.filter(e=>e.person===name && e.completed).length;
+  });
+  return count;
+}
+function renderCoachEval(){
+  if(!requirePerm('viewCoachEval','教練考核限館長或主教練查看')) return;
+  const m=monthStr();
+  const monthReviews=reviewsInMonth(m);
+  const byCoach={};
+  activePeople().forEach(p=>byCoach[p.name]=[]);
+  monthReviews.forEach(r=>{ (byCoach[r.coach]=byCoach[r.coach]||[]).push(r); });
+  const low=monthReviews.filter(r=>r.total<3.5).sort((a,b)=>a.total-b.total);
+  const lowSelf=monthReviews.filter(r=>{
+    const vals=Object.values(r.self||{});
+    return vals.length && vals.reduce((a,b)=>a+b,0)/vals.length < 3.5;
+  });
+  const needs=monthReviews.filter(r=>r.support && r.support!=='不需要').slice().reverse();
+  $('#panel-a-coach-eval').innerHTML=`
+  <div class="section"><div class="section-header"><div class="section-title">🎯 教練考核總覽</div><span class="mini">${m}</span></div>
+    <div class="section-body">
+      <div class="note">館長看復盤時，重點不是責備，而是確認教練是否有備課、有證據、有下一次改善指標。</div>
+      <div class="dash-grid g3">
+        <div class="stat"><div class="num">${monthReviews.length}</div><div class="cap">本月復盤</div></div>
+        <div class="stat"><div class="num warn">${low.length}</div><div class="cap">低於 3.5</div></div>
+        <div class="stat"><div class="num warn">${lowSelf.length}</div><div class="cap">自評偏低</div></div>
+        <div class="stat"><div class="num blue">${needs.length}</div><div class="cap">需要協助</div></div>
+      </div>
+    </div>
+  </div>
+  <div class="section"><div class="section-header"><div class="section-title">📊 教練復盤完成率</div></div>
+    <div class="section-body">${Object.keys(byCoach).map(name=>{
+      const list=byCoach[name]||[];
+      const lessons=completedCoachLessonsInMonth(name,m);
+      const avg=list.length?list.reduce((a,r)=>a+r.total,0)/list.length:0;
+      const selfList=list.map(r=>Object.values(r.self||{})).filter(v=>v.length);
+      const selfAvg=selfList.length?selfList.flat().reduce((a,b)=>a+b,0)/selfList.flat().length:0;
+      const miss=Math.max(lessons-list.length,0);
+      const rate=lessons?Math.round(list.length/lessons*100):0;
+      const parentCount=(DB.parentReports||[]).filter(p=>p.coach===name && (p.date||'').slice(0,7)===m).length;
+      const payRef=(rate>=80 && avg>=3.5)?'可作為酬勞參考':'暫不建議';
+      const weak=list.length?SIX[list.flatMap(r=>r.scores||[]).reduce((min,_,i)=>i,0)]:'—';
+      const latest=list.slice().sort((a,b)=>b.ts-a.ts)[0];
+      return `<div class="list-item"><div class="li-top"><div class="li-name">${esc(name)}</div><span class="pill ${avg>=4?'pill-green':avg>=3.5?'pill-gold':list.length?'pill-red':'pill-gray'}">${list.length?avg.toFixed(1):'未復盤'}</span></div>
+        <div class="li-sub">本月上課 ${lessons}｜復盤率 ${rate}%｜平均課程 ${avg?avg.toFixed(1):'—'}｜家長回報 ${parentCount}｜自評 ${selfAvg?selfAvg.toFixed(1):'—'}｜${payRef}｜館長備註：${esc(personByName(name)?.note||'—')}｜最近改善：${esc(latest?.next||'—')}</div></div>`;
+    }).join('')}</div>
+  </div>
+  <div class="section"><div class="section-header"><div class="section-title">⚠️ 館長需追蹤</div></div>
+    <div class="section-body">
+      ${low.length?low.map(r=>`<div class="list-item"><div class="li-top"><div class="li-name">${esc(r.coach)}｜${esc(r.date)}｜${esc(r.className)}</div><span class="pill pill-red">${r.total.toFixed(1)}</span></div>
+        <div class="li-sub">待改善：${esc(r.worst||'—')}｜下次：${esc(r.next||'—')}｜指標：${esc(r.metric||'—')}</div></div>`).join(''):'<div class="empty">目前沒有低分復盤</div>'}
+      ${lowSelf.length?`<div class="note" style="margin-top:10px">自評偏低<br>${lowSelf.map(r=>{
+        const vals=Object.values(r.self||{}); const avg=vals.reduce((a,b)=>a+b,0)/vals.length;
+        return `${esc(r.date)} ${esc(r.coach)}：自評 ${avg.toFixed(1)}，課前 ${r.self?.prep||'—'} / 準時 ${r.self?.punctual||'—'} / 態度 ${r.self?.attitude||'—'} / 反思 ${r.self?.reflection||'—'}`;
+      }).join('<br>')}</div>`:''}
+      ${needs.length?`<div class="note" style="margin-top:10px">需要協助<br>${needs.map(r=>`${esc(r.date)} ${esc(r.coach)}：${esc(r.support)}`).join('<br>')}</div>`:''}
+    </div>
+  </div>
+  <div class="section"><div class="section-header"><div class="section-title">📝 最新復盤內容</div></div>
+    <div class="section-body">${monthReviews.slice().sort((a,b)=>b.ts-a.ts).slice(0,12).map(r=>`
+      <div class="list-item"><div class="li-top"><div class="li-name">${esc(r.date)}｜${esc(r.coach)}｜${esc(r.className)}</div><span class="pill pill-gold">${esc(r.grade)}級 ${r.total.toFixed(1)}</span></div>
+      <div class="li-sub">目標：${esc(r.goal||'—')}｜自評：${Object.values(r.self||{}).length?(Object.values(r.self).reduce((a,b)=>a+b,0)/Object.values(r.self).length).toFixed(1):'—'}｜態度：${r.self?.attitude||'—'}｜反思：${r.self?.reflection||'—'}｜下次：${esc(r.next||'—')}</div></div>`).join('') || '<div class="empty">本月尚無復盤</div>'}</div>
+  </div>`;
+}
+
+function courseReviewStats(){
+  const today=todayStr();
+  const {days}=weekRange();
+  const reviews=DB.reviews||[];
+  const todayReviews=reviews.filter(r=>r.date===today);
+  const weekReviews=reviews.filter(r=>days.includes(r.date));
+  const weekLessons=(DB.schedules||[]).filter(s=>days.includes(s.date)&&s.status!=='取消');
+  const byCoach={}; reviews.forEach(r=>{ byCoach[r.coach]=(byCoach[r.coach]||0)+1; });
+  const byClass={}; reviews.forEach(r=>{ (byClass[r.className]=byClass[r.className]||[]).push(+r.total||0); });
+  const problemText=reviews.flatMap(r=>[r.worst,r.evidence,r.special].filter(Boolean).join(' ').split(/[，,、\s]+/)).filter(x=>x&&x.length>1);
+  const problems={}; problemText.forEach(w=>{ problems[w]=(problems[w]||0)+1; });
+  const concern=(DB.studentRecords||[]).filter(r=>r.performance==='需提醒'||r.notifyParent||r.techIssue||r.attitudeIssue||r.focusIssue).slice(-8).reverse();
+  const reviewedKeys=new Set(reviews.map(r=>`${r.date}|${r.className}|${r.coach}`));
+  const missing=weekLessons.filter(s=>s.mainCoach&&!reviewedKeys.has(`${s.date}|${s.className}|${s.mainCoach}`));
+  return {todayReviews,weekReviews,weekLessons,byCoach,byClass,problems,concern,missing};
+}
+
+/* =========================================================
+   館長：今日總覽
+========================================================= */
+function renderDash(){
+  const t=todayStr();
+  DB.schedules.forEach(ensureEntries);
+  const today=DB.schedules.filter(s=>s.date===t).sort((a,b)=>a.start.localeCompare(b.start));
+  const doneEntries=today.reduce((a,s)=>a+s.entries.filter(e=>e.completed).length,0);
+  const totalEntries=today.reduce((a,s)=>a+s.entries.length,0);
+  const m=monthStr();
+  const monthNet=DB.salaryRecords.filter(r=>r.month===m).reduce((a,r)=>a+r.net,0);
+  const pendingLeave=DB.leaveRequests.filter(l=>l.status==='請假待確認').length;
+  const pendingSub=DB.substituteRecords.filter(s=>s.status==='待確認').length;
+  const canManageSchedule=hasPerm('manageSchedule');
+  const canConfirmLeave=hasPerm('confirmLeave');
+  const canConfirmSub=hasPerm('confirmSub');
+  const canViewSalaryTotal=hasPerm('viewSalaryTotal');
+  const stats=courseReviewStats();
+  const weekRate=stats.weekLessons.length?Math.round(stats.weekReviews.length/stats.weekLessons.length*100):0;
+  const coachRank=Object.keys(stats.byCoach).sort((a,b)=>stats.byCoach[b]-stats.byCoach[a]).slice(0,6);
+  const classAvg=Object.keys(stats.byClass).map(k=>[k,stats.byClass[k].reduce((a,b)=>a+b,0)/stats.byClass[k].length]).sort((a,b)=>b[1]-a[1]).slice(0,6);
+  const problemRank=Object.keys(stats.problems).sort((a,b)=>stats.problems[b]-stats.problems[a]).slice(0,8);
+  $('#panel-a-dash').innerHTML=`
+  <div class="section"><div class="section-header"><div class="section-title">🎯 課程品質管理</div><span class="mini">今日 / 本週</span></div>
+    <div class="section-body">
+      <div class="dash-grid g3">
+        <div class="stat"><div class="num good">${stats.todayReviews.length}</div><div class="cap">今日完成復盤</div></div>
+        <div class="stat"><div class="num blue">${weekRate}%</div><div class="cap">本週復盤率</div></div>
+        <div class="stat"><div class="num warn">${stats.missing.length}</div><div class="cap">未填提醒</div></div>
+      </div>
+      <div class="list-item"><div class="li-name">各教練填寫次數</div><div class="li-sub">${coachRank.map(n=>`${esc(n)} ${stats.byCoach[n]}筆`).join('｜')||'尚無資料'}</div></div>
+      <div class="list-item"><div class="li-name">各班級平均分數</div><div class="li-sub">${classAvg.map(x=>`${esc(x[0])} ${x[1].toFixed(1)}`).join('｜')||'尚無資料'}</div></div>
+      <div class="list-item"><div class="li-name">常見問題排行</div><div class="li-sub">${problemRank.map(w=>`${esc(w)}(${stats.problems[w]})`).join('｜')||'尚無資料'}</div></div>
+      <div class="list-item"><div class="li-name">學生需關注名單</div><div class="li-sub">${stats.concern.map(r=>`${esc(r.studentName)}：${esc(r.nextReminder||r.techIssue||r.attitudeIssue||r.focusIssue||'需追蹤')}`).join('｜')||'尚無資料'}</div></div>
+      <div class="list-item"><div class="li-name">未填寫課後復盤提醒</div><div class="li-sub">${stats.missing.slice(0,8).map(s=>`${esc(s.date)} ${esc(s.className)} ${esc(s.mainCoach)}`).join('｜')||'本週目前無缺漏'}</div></div>
+    </div>
+  </div>
+  <div class="section"><div class="section-header"><div class="section-title">🏠 今日總覽</div><span class="mini">${t}（${weekdayOf(t)}）</span></div>
+    <div class="section-body"><div class="dash-grid g3">
+      <div class="stat"><div class="num">${today.length}</div><div class="cap">今日課程</div></div>
+      <div class="stat"><div class="num good">${doneEntries}/${totalEntries}</div><div class="cap">出席完成</div></div>
+      <div class="stat"><div class="num warn">${pendingLeave+pendingSub}</div><div class="cap">待確認</div></div>
+      <div class="stat"><div class="num blue">${DB.people.filter(x=>x.active).length}</div><div class="cap">在職人員</div></div>
+      ${canViewSalaryTotal?`<div class="stat"><div class="num">${DB.salaryRecords.filter(r=>r.month===m).length}</div><div class="cap">本月酬勞筆</div></div>
+      <div class="stat"><div class="num money">$${fmtMoney(monthNet)}</div><div class="cap">本月酬勞總額</div></div>`:
+      `<div class="stat"><div class="num">—</div><div class="cap">酬勞筆</div></div>
+      <div class="stat"><div class="num">—</div><div class="cap">酬勞總額</div></div>`}
+    </div></div>
+  </div>
+  <div class="section"><div class="section-header"><div class="section-title">📅 今日課程</div>
+    ${canManageSchedule?`<button class="btn btn-gold btn-xs" onclick="switchTab('a-sched')">＋ 排班</button>`:''}</div>
+    <div class="section-body">${ today.length? today.map(s=>adminSchedRow(s)).join('') : '<div class="empty">今日尚無排班，可至「排班管理」或用固定週課表產生</div>' }</div>
+  </div>
+  ${(pendingLeave||pendingSub)?`<div class="section"><div class="section-header"><div class="section-title">⏳ 待確認</div></div>
+    <div class="section-body">
+      ${DB.leaveRequests.filter(l=>l.status==='請假待確認').map(l=>`<div class="list-item"><div class="li-top"><div class="li-name">🙋 ${esc(l.originPerson)} 請假</div>${canConfirmLeave?`<button class="btn btn-green btn-xs" onclick="confirmLeave('${l.id}')">確認</button>`:'<span class="pill pill-orange">待館長/主教練</span>'}</div><div class="li-sub">${esc(l.date)}｜${esc(l.className)}｜${esc(l.reason||'')}</div></div>`).join('')}
+      ${DB.substituteRecords.filter(s=>s.status==='待確認').map(s=>`<div class="list-item"><div class="li-top"><div class="li-name">🔁 ${esc(s.subCoach)} 代班</div>${canConfirmSub?`<button class="btn btn-blue btn-xs" onclick="confirmSub('${s.id}')">確認/加給</button>`:'<span class="pill pill-orange">待館長確認</span>'}</div><div class="li-sub">${esc(s.date)}｜${esc(s.className)}｜原：${esc(s.originCoach||'—')}</div></div>`).join('')}
+    </div></div>`:''}`;
+}
+function confirmLeave(id){
+  if(!requirePerm('confirmLeave','只有館長或主教練可以確認請假')) return;
+  const l=DB.leaveRequests.find(x=>x.id===id);
+  openModal('確認請假 / 指定代班', `
+    <div class="mini">${esc(l.date)}｜${esc(l.className)}｜原排班：${esc(l.originPerson)}</div>
+    <div class="form-row" style="margin-top:10px"><label class="form-label">指定代班人員</label>
+      <select id="cl_sub" class="form-select"><option value="">不指定</option>${activePeople().map(p=>`<option ${l.subPerson===p.name?'selected':''}>${esc(p.name)}</option>`).join('')}</select></div>`,
+    [{label:'確認請假',cls:'btn-green',fn:()=>{ l.status='已確認'; l.subPerson=$('#cl_sub').value;
+      if(l.scheduleId){ const s=DB.schedules.find(x=>x.id===l.scheduleId); if(s){ s.status='請假';
+        if(l.subPerson){ if(s.mainCoach===l.originPerson) s.mainCoach=l.subPerson; delete s.entries; ensureEntries(s); } } }
+      save(); closeModal(); toast('已確認請假'); renderTab(CURRENT_TAB); }},
+     {label:'取消',cls:'btn-ghost',fn:closeModal}]);
+}
+function confirmSub(id){
+  if(!requirePerm('confirmSub','只有館長可以確認代班加給')) return;
+  const s=DB.substituteRecords.find(x=>x.id===id);
+  openModal('確認代班 / 是否加給', `
+    <div class="mini">${esc(s.date)}｜${esc(s.className)}｜代班：${esc(s.subCoach)}</div>
+    <div class="form-row" style="margin-top:10px"><label class="form-label">是否給代班加給（+$${fmtMoney(subAmt())}）</label>
+      <select id="sb_extra" class="form-select"><option value="yes">給加給</option><option value="no">不加給</option></select></div>`,
+    [{label:'確認',cls:'btn-green',fn:()=>{ s.status='已確認'; s.extraPay=$('#sb_extra').value==='yes';
+      if(s.scheduleId){ const sch=DB.schedules.find(x=>x.id===s.scheduleId); if(sch){ ensureEntries(sch);
+        const e=sch.entries.find(e=>e.person===s.subCoach); if(e){ e.isSub=true; e.subExtra=s.extraPay;
+          if(e.salaryId){ const r=DB.salaryRecords.find(x=>x.id===e.salaryId); if(r){ r.bonus=s.extraPay?subAmt():0; r.net=r.base+r.bonus-r.deduct; } } } } }
+      save(); closeModal(); toast('已確認代班'); renderTab(CURRENT_TAB); }},
+     {label:'取消',cls:'btn-ghost',fn:closeModal}]);
+}
+
+/* =========================================================
+   館長：排班管理
+========================================================= */
+let schedFilterDate='';
+let monthScheduleMonth='';
+function timeOverlap(aStart,aEnd,bStart,bEnd){ return aStart < bEnd && bStart < aEnd; }
+function scheduleIssues(obj, excludeId){
+  const issues=[];
+  const assigned=[obj.mainCoach,obj.a1,obj.a2,obj.a3].filter(Boolean);
+  const dup=assigned.find((p,i)=>assigned.indexOf(p)!==i);
+  const klass=DB.classes.find(c=>c.name===obj.className);
+  const assistCount=[obj.a1,obj.a2,obj.a3].filter(Boolean).length;
+  if(!obj.mainCoach) issues.push('缺少主教練');
+  if(dup) issues.push(`${dup} 在同一堂課被重複安排`);
+  if(klass && assistCount < (+klass.assistantCount||0)) issues.push(`${obj.className} 預設需要 ${klass.assistantCount} 位助教，目前只有 ${assistCount} 位`);
+  assigned.forEach(name=>{ const p=personByName(name); if(p && !p.active) issues.push(`${name} 已停用，不應排班`); });
+  DB.schedules.forEach(s=>{
+    if(s.id===excludeId || s.date!==obj.date || s.status==='取消') return;
+    const others=[s.mainCoach,s.a1,s.a2,s.a3].filter(Boolean);
+    assigned.forEach(name=>{
+      if(others.includes(name) && timeOverlap(obj.start,obj.end,s.start,s.end)){
+        issues.push(`${name} 與 ${s.start}-${s.end} ${s.className} 撞班`);
+      }
+    });
+  });
+  return [...new Set(issues)];
+}
+function renderSched(){
+  if(!requirePerm('manageSchedule','只有館長或主教練可以管理排班')) return;
+  DB.schedules.forEach(ensureEntries);
+  if(!schedFilterDate) schedFilterDate=todayStr();
+  const list=DB.schedules.filter(s=>!schedFilterDate||s.date===schedFilterDate).sort((a,b)=>(a.date+a.start).localeCompare(b.date+b.start));
+  const allIssues=DB.schedules.flatMap(s=>scheduleIssues(s,s.id).map(msg=>`${s.date} ${s.className}：${msg}`));
+  $('#panel-a-sched').innerHTML=`
+  <div class="section"><div class="section-header"><div class="section-title">📋 排班管理</div>
+    <button class="btn btn-gold btn-xs" onclick="openSchedModal('')">＋ 新增排班</button></div>
+    <div class="section-body">
+      ${allIssues.length?`<div class="note">⚠️ 排班提醒<br>${allIssues.slice(0,8).map(esc).join('<br>')}${allIssues.length>8?'<br>…':''}</div>`:''}
+      <div class="form-grid">
+        <div class="form-row"><label class="form-label">篩選日期</label><input type="date" class="form-input" value="${schedFilterDate}" onchange="schedFilterDate=this.value;renderSched()"></div>
+        <div class="form-row"><label class="form-label">　</label><button class="btn btn-secondary btn-block" onclick="schedFilterDate='';renderSched()">顯示全部</button></div>
+      </div>
+      <div class="btns2">
+        <button class="btn btn-blue btn-sm" onclick="genWeekFromTemplate()">⚙️ 產生本週排班</button>
+        <button class="btn btn-orange btn-sm" onclick="openSchedModal('',true)">⚡ 臨時加課</button>
+      </div>
+    </div>
+  </div>
+  <div style="margin:0 16px">${ list.length? list.map(s=>adminSchedRow(s,true)).join('') : '<div class="empty">此條件下沒有排班</div>' }</div>`;
+}
+function shiftMonth(delta){
+  if(!monthScheduleMonth) monthScheduleMonth=monthStr();
+  const d=new Date(monthScheduleMonth+'-01T00:00:00');
+  d.setMonth(d.getMonth()+delta);
+  monthScheduleMonth=d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0');
+  renderMonthSchedule();
+}
+function monthCalendarDays(ym){
+  const first=new Date(ym+'-01T00:00:00');
+  const start=new Date(first);
+  start.setDate(first.getDate()-first.getDay());
+  const days=[];
+  for(let i=0;i<42;i++){
+    const d=new Date(start);
+    d.setDate(start.getDate()+i);
+    days.push(d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0')+'-'+String(d.getDate()).padStart(2,'0'));
+  }
+  return days;
+}
+function datesInMonth(ym){
+  const first=new Date(ym+'-01T00:00:00');
+  const days=[];
+  const d=new Date(first);
+  while(d.getMonth()===first.getMonth()){
+    days.push(d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0')+'-'+String(d.getDate()).padStart(2,'0'));
+    d.setDate(d.getDate()+1);
+  }
+  return days;
+}
+function renderMonthSchedule(){
+  if(!requirePerm('manageSchedule','只有館長或主教練可以查看月班表')) return;
+  if(!monthScheduleMonth) monthScheduleMonth=monthStr();
+  DB.schedules.forEach(ensureEntries);
+  const monthList=DB.schedules
+    .filter(s=>(s.date||'').slice(0,7)===monthScheduleMonth)
+    .sort((a,b)=>(a.date+a.start).localeCompare(b.date+b.start));
+  const done=monthList.filter(s=>s.status==='已上課'||s.entries.some(e=>e.completed)).length;
+  const cancelled=monthList.filter(s=>s.status==='取消').length;
+  const coachCount=new Set(monthList.flatMap(s=>[s.mainCoach,s.a1,s.a2,s.a3].filter(Boolean))).size;
+  const byDate={};
+  monthList.forEach(s=>{ (byDate[s.date]=byDate[s.date]||[]).push(s); });
+  const days=monthCalendarDays(monthScheduleMonth);
+  $('#panel-a-month').innerHTML=`
+  <div class="section"><div class="section-header"><div class="section-title">📆 月班表</div>
+    <button class="btn btn-gold btn-xs" onclick="openSchedModal('')">＋ 新增排班</button></div>
+    <div class="section-body">
+      <div class="form-grid">
+        <div class="form-row"><label class="form-label">查看月份</label><input type="month" class="form-input" value="${monthScheduleMonth}" onchange="monthScheduleMonth=this.value;renderMonthSchedule()"></div>
+        <div class="form-row"><label class="form-label">快速切換</label><div class="btn-row"><button class="btn btn-secondary btn-sm" onclick="shiftMonth(-1)">上月</button><button class="btn btn-secondary btn-sm" onclick="monthScheduleMonth=monthStr();renderMonthSchedule()">本月</button><button class="btn btn-secondary btn-sm" onclick="shiftMonth(1)">下月</button></div></div>
+      </div>
+      <div class="btns2" style="margin-bottom:12px">
+        <button class="btn btn-blue btn-sm" onclick="genMonthFromTemplate()">⚙️ 固定週課表產生本月</button>
+        <button class="btn btn-orange btn-sm" onclick="openSchedModal('',true)">⚡ 臨時加課</button>
+      </div>
+      <div class="dash-grid g3">
+        <div class="stat"><div class="num">${monthList.length}</div><div class="cap">本月排班堂數</div></div>
+        <div class="stat"><div class="num good">${done}</div><div class="cap">已完成上課</div></div>
+        <div class="stat"><div class="num blue">${coachCount}</div><div class="cap">參與教練</div></div>
+      </div>
+      ${cancelled?`<div class="note" style="margin-top:12px">本月取消課程：${cancelled} 堂</div>`:''}
+    </div>
+  </div>
+  <div class="section"><div class="section-header"><div class="section-title">${monthScheduleMonth} 月曆班表</div></div>
+    <div class="section-body">
+      <div class="month-grid">
+        ${WD.map(w=>`<div class="month-head">${w.replace('週','')}</div>`).join('')}
+        ${days.map(d=>{
+          const items=(byDate[d]||[]).sort((a,b)=>a.start.localeCompare(b.start));
+          return `<div class="month-day ${d.slice(0,7)===monthScheduleMonth?'':'muted'}">
+            <div class="month-date">${+d.slice(8)}日</div>
+            ${items.slice(0,4).map(s=>`<div class="month-item ${s.status==='取消'?'cancelled':''}" onclick="openMonthSchedAction('${s.id}')">
+              <b>${esc(s.start)} ${esc(s.className)}${(s.courseType&&s.courseType!=='一般上課')?'｜'+esc(s.courseType):''}${s.status==='取消'?'（停課）':''}</b>
+              主:${esc(s.mainCoach||'—')}<br>助:${esc([s.a1,s.a2,s.a3].filter(Boolean).join('、')||'—')}
+            </div>`).join('')}
+            ${items.length>4?`<div class="month-item">另 ${items.length-4} 堂...</div>`:''}
+          </div>`;
+        }).join('')}
+      </div>
+      ${monthList.length?'':'<div class="empty">本月尚無排班，請到「固定週課表」產生，或按右上角新增排班。</div>'}
+    </div>
+  </div>
+  <div class="section"><div class="section-header"><div class="section-title">本月明細</div></div>
+    <div class="section-body">${monthList.length?monthList.map(s=>adminSchedRow(s,false)).join(''):'<div class="empty">尚無明細</div>'}</div>
+  </div>`;
+}
+function adminSchedRow(s, full){
+  ensureEntries(s);
+  const assist=[s.a1,s.a2,s.a3].filter(Boolean).join('、')||'—';
+  const cls=s.status==='取消'?'cancel':'';
+  const canDelete=hasPerm('deleteSchedule');
+  const type=s.courseType||'一般上課';
+  return `<div class="card ${cls}">
+    <div class="card-top">
+      <div><div class="card-time">${esc(s.start)}–${esc(s.end)}</div><div class="card-class">${esc(s.className)} ${type!=='一般上課'?`<span class="pill pill-blue">${esc(type)}</span>`:''} ${s.temp?'<span class="pill pill-orange">臨時</span>':''}</div></div>
+      <div style="text-align:right">${statusPill(s.status)}<div class="card-meta">${esc(s.payRole||'主教練')}</div></div>
+    </div>
+    <div class="card-meta">📅 ${esc(s.date)}（${esc(s.weekday)}）｜主：<b>${esc(s.mainCoach||'—')}</b>｜助：${esc(assist)}<br>📖 ${esc(s.content||'—')}${s.note?'｜'+esc(s.note):''}</div>
+    ${full?`<div class="card-actions">
+      <button class="btn btn-secondary btn-xs" onclick="openSchedModal('${s.id}')">✏️ 編輯</button>
+      <button class="btn btn-secondary btn-xs" onclick="cancelSched('${s.id}')">🚫 取消課程</button>
+      ${canDelete?`<button class="btn btn-red btn-xs" onclick="delSched('${s.id}')">🗑️ 刪除</button>`:''}
+    </div>`:''}
+  </div>`;
+}
+function openMonthSchedAction(id){
+  if(!requirePerm('manageSchedule','只有館長或主教練可以操作月班表')) return;
+  const s=DB.schedules.find(x=>x.id===id); if(!s) return;
+  const assist=[s.a1,s.a2,s.a3].filter(Boolean).join('、')||'—';
+  const type=s.courseType||'一般上課';
+  openModal('📆 月班表課程操作', `
+    <div class="mini">${esc(s.date)}（${esc(s.weekday)}）｜${esc(s.start)}-${esc(s.end)}</div>
+    <div class="card" style="margin-top:10px">
+      <div class="card-class">${esc(s.className)} ${type!=='一般上課'?`<span class="pill pill-blue">${esc(type)}</span>`:''}</div>
+      <div class="card-meta">主教練：<b>${esc(s.mainCoach||'—')}</b>｜助教：${esc(assist)}<br>狀態：${statusPill(s.status)}<br>內容：${esc(s.content||'—')}${s.note?'｜備註：'+esc(s.note):''}</div>
+    </div>
+    <div class="note">停課會把這堂課標記為「取消」，月班表、排班管理、出缺席與後台 Sheets 都會同步。</div>`,
+    [
+      s.status==='取消'
+        ? {label:'恢復排班',cls:'btn-green',fn:()=>restoreSched(id)}
+        : {label:'停課',cls:'btn-red',fn:()=>cancelSched(id)},
+      {label:'編輯',cls:'btn-secondary',fn:()=>openSchedModal(id)},
+      {label:'關閉',cls:'btn-ghost',fn:closeModal}
+    ]);
+}
+function openSchedModal(id, temp){
+  if(!requirePerm('manageSchedule','只有館長或主教練可以新增或編輯排班')) return;
+  const s=id?DB.schedules.find(x=>x.id===id):null;
+  const peopleOpts=v=>`<option value="">—</option>`+activePeople().map(p=>`<option ${v===p.name?'selected':''}>${esc(p.name)}</option>`).join('');
+  const classOpts=DB.classes.map(c=>`<option ${s&&s.className===c.name?'selected':''}>${esc(c.name)}</option>`).join('');
+  openModal(id?'✏️ 編輯排班':(temp?'⚡ 臨時加課':'＋ 新增排班'), `
+    <div class="form-grid">
+      <div class="form-row"><label class="form-label">日期</label><input id="sd_date" type="date" class="form-input" value="${s?s.date:todayStr()}"></div>
+      <div class="form-row"><label class="form-label">星期</label><input id="sd_weekday" class="form-input" value="${s?esc(s.weekday):weekdayOf(todayStr())}" readonly></div>
+      <div class="form-row"><label class="form-label">班別</label><select id="sd_class" class="form-select" onchange="applySchedClass()">${classOpts}</select></div>
+      <div class="form-row"><label class="form-label">課程類型</label><select id="sd_type" class="form-select">${SCHEDULE_TYPES.map(x=>`<option ${(!s&&x==='一般上課')||(s&&(s.courseType||'一般上課')===x)?'selected':''}>${x}</option>`).join('')}</select></div>
+      <div class="form-row"><label class="form-label">酬勞身分</label><select id="sd_payrole" class="form-select">${PAY_ROLES.map(r=>`<option ${s&&s.payRole===r?'selected':''}>${r}</option>`).join('')}</select></div>
+      <div class="form-row"><label class="form-label">開始時間</label><input id="sd_start" type="time" class="form-input" value="${s?s.start:'18:00'}"></div>
+      <div class="form-row"><label class="form-label">結束時間</label><input id="sd_end" type="time" class="form-input" value="${s?s.end:'19:30'}"></div>
+      <div class="form-row"><label class="form-label">主教練</label><select id="sd_main" class="form-select">${peopleOpts(s?s.mainCoach:'')}</select></div>
+      <div class="form-row"><label class="form-label">助教1</label><select id="sd_a1" class="form-select">${peopleOpts(s?s.a1:'')}</select></div>
+      <div class="form-row"><label class="form-label">助教2</label><select id="sd_a2" class="form-select">${peopleOpts(s?s.a2:'')}</select></div>
+      <div class="form-row"><label class="form-label">助教3</label><select id="sd_a3" class="form-select">${peopleOpts(s?s.a3:'')}</select></div>
+      <div class="form-row"><label class="form-label">狀態</label><select id="sd_status" class="form-select">${SCH_STATUS.map(x=>`<option ${s&&s.status===x?'selected':''}>${x}</option>`).join('')}</select></div>
+    </div>
+    <div class="form-row"><label class="form-label">課程內容</label><textarea id="sd_content" class="form-textarea">${s?esc(s.content||''):''}</textarea></div>
+    <div class="form-row"><label class="form-label">備註</label><input id="sd_note" class="form-input" value="${s?esc(s.note||''):''}"></div>`,
+    [{label:'儲存',cls:'btn-primary',fn:()=>{
+      const date=$('#sd_date').value;
+      const obj={ date, weekday:weekdayOf(date), className:$('#sd_class').value, start:$('#sd_start').value, end:$('#sd_end').value,
+        mainCoach:$('#sd_main').value, a1:$('#sd_a1').value, a2:$('#sd_a2').value, a3:$('#sd_a3').value,
+        content:$('#sd_content').value, courseType:$('#sd_type').value, payRole:$('#sd_payrole').value, status:$('#sd_status').value, note:$('#sd_note').value, temp:!!temp };
+      const issues=scheduleIssues(obj, s?s.id:null);
+      if(issues.length){ alert('排班異常，請先修正：\n\n'+issues.join('\n')); return; }
+      if(s){ Object.assign(s,obj); delete s.entries; ensureEntries(s); }
+      else { obj.id=uid(); DB.schedules.push(obj); ensureEntries(obj); }
+      save(); closeModal(); toast('已儲存排班'); renderTab(CURRENT_TAB);
+    }},{label:'取消',cls:'btn-ghost',fn:closeModal}]);
+  setTimeout(()=>{ const di=$('#sd_date'); if(di) di.addEventListener('change',()=>{ $('#sd_weekday').value=weekdayOf(di.value); }); },50);
+}
+function applySchedClass(){
+  const c=DB.classes.find(x=>x.name===$('#sd_class').value); if(!c) return;
+  $('#sd_start').value=c.start; $('#sd_end').value=c.end; if(c.mainCoach) $('#sd_main').value=c.mainCoach;
+}
+function cancelSched(id){
+  if(!requirePerm('manageSchedule','只有館長或主教練可以取消課程')) return;
+  const s=DB.schedules.find(x=>x.id===id); if(!s) return;
+  s.status='取消'; ensureEntries(s); s.entries.forEach(e=>e.status='取消');
+  save(); closeModal(); toast('已停課／取消課程'); renderTab(CURRENT_TAB);
+}
+function restoreSched(id){
+  if(!requirePerm('manageSchedule','只有館長或主教練可以恢復課程')) return;
+  const s=DB.schedules.find(x=>x.id===id); if(!s) return;
+  s.status='已排班'; ensureEntries(s); s.entries.forEach(e=>{ if(e.status==='取消') e.status='已排班'; });
+  save(); closeModal(); toast('已恢復排班'); renderTab(CURRENT_TAB);
+}
+function delSched(id){ if(!requirePerm('deleteSchedule','刪除排班限館長使用')) return; confirmBox('確定刪除此排班？相關酬勞紀錄不會自動刪除。',()=>{ DB.schedules=DB.schedules.filter(s=>s.id!==id); save(); toast('已刪除'); renderTab(CURRENT_TAB); }); }
+
+/* =========================================================
+   館長：固定週課表
+========================================================= */
+function renderWeekly(){
+  if(!requirePerm('manageWeekly','只有館長或主教練可以管理固定週課表')) return;
+  const byDay={}; ['週一','週二','週三','週四','週五','週六','週日'].forEach(w=>byDay[w]=[]);
+  DB.weeklyTemplates.forEach(t=>{ (byDay[t.weekday]=byDay[t.weekday]||[]).push(t); });
+  $('#panel-a-weekly').innerHTML=`
+  <div class="section"><div class="section-header"><div class="section-title">🗓️ 固定週課表</div>
+    <button class="btn btn-gold btn-xs" onclick="openWeeklyModal('')">＋ 新增</button></div>
+    <div class="section-body">
+      <div class="note">固定週課表是模板。要讓月班表出現資料，請用「產生本月排班」把固定課展開到整個月份。</div>
+      <div class="btns2">
+        <button class="btn btn-blue" onclick="genMonthFromTemplate()">📆 產生本月排班</button>
+        <button class="btn btn-secondary" onclick="genWeekFromTemplate()">⚙️ 產生本週排班</button>
+      </div>
+    </div>
+  </div>
+  ${['週一','週二','週三','週四','週五','週六','週日'].map(w=>{
+    const items=(byDay[w]||[]); if(!items.length) return '';
+    return `<div class="section"><div class="section-header"><div class="section-title">${w}</div></div><div class="section-body">${items.sort((a,b)=>a.start.localeCompare(b.start)).map(t=>`
+      <div class="list-item"><div class="li-top"><div class="li-name">${esc(t.start)}–${esc(t.end)}｜${esc(t.className)} ${t.active?'':'<span class="pill pill-gray">停用</span>'}</div>
+        <div class="li-actions"><button class="icon-btn" onclick="openWeeklyModal('${t.id}')">✏️</button><button class="icon-btn del" onclick="delWeekly('${t.id}')">🗑️</button></div></div>
+      <div class="li-sub">主：${esc(t.mainCoach||'—')}｜助：${[t.a1,t.a2,t.a3].filter(Boolean).join('、')||'—'}｜${esc(t.content||'')}</div></div>`).join('')}</div></div>`;
+  }).join('') || '<div class="empty">尚無固定週課表，點右上角新增</div>'}`;
+}
+function openWeeklyModal(id){
+  if(!requirePerm('manageWeekly','只有館長或主教練可以編輯固定週課表')) return;
+  const t=id?DB.weeklyTemplates.find(x=>x.id===id):null;
+  const peopleOpts=v=>`<option value="">—</option>`+activePeople().map(p=>`<option ${v===p.name?'selected':''}>${esc(p.name)}</option>`).join('');
+  openModal(id?'✏️ 編輯固定課':'＋ 新增固定課', `
+    <div class="form-grid">
+      <div class="form-row"><label class="form-label">星期</label><select id="wt_wd" class="form-select">${['週一','週二','週三','週四','週五','週六','週日'].map(w=>`<option ${t&&t.weekday===w?'selected':''}>${w}</option>`).join('')}</select></div>
+      <div class="form-row"><label class="form-label">班別</label><select id="wt_class" class="form-select" onchange="applyWtClass()">${DB.classes.map(c=>`<option ${t&&t.className===c.name?'selected':''}>${esc(c.name)}</option>`).join('')}</select></div>
+      <div class="form-row"><label class="form-label">開始</label><input id="wt_start" type="time" class="form-input" value="${t?t.start:'18:00'}"></div>
+      <div class="form-row"><label class="form-label">結束</label><input id="wt_end" type="time" class="form-input" value="${t?t.end:'19:30'}"></div>
+      <div class="form-row"><label class="form-label">主教練</label><select id="wt_main" class="form-select">${peopleOpts(t?t.mainCoach:'')}</select></div>
+      <div class="form-row"><label class="form-label">啟用</label><select id="wt_active" class="form-select"><option value="1" ${!t||t.active?'selected':''}>啟用</option><option value="0" ${t&&!t.active?'selected':''}>停用</option></select></div>
+      <div class="form-row"><label class="form-label">助教1</label><select id="wt_a1" class="form-select">${peopleOpts(t?t.a1:'')}</select></div>
+      <div class="form-row"><label class="form-label">助教2</label><select id="wt_a2" class="form-select">${peopleOpts(t?t.a2:'')}</select></div>
+      <div class="form-row"><label class="form-label">助教3</label><select id="wt_a3" class="form-select">${peopleOpts(t?t.a3:'')}</select></div>
+    </div>
+    <div class="form-row"><label class="form-label">課程內容</label><textarea id="wt_content" class="form-textarea">${t?esc(t.content||''):''}</textarea></div>`,
+    [{label:'儲存',cls:'btn-primary',fn:()=>{
+      const obj={ weekday:$('#wt_wd').value, className:$('#wt_class').value, start:$('#wt_start').value, end:$('#wt_end').value,
+        mainCoach:$('#wt_main').value, a1:$('#wt_a1').value, a2:$('#wt_a2').value, a3:$('#wt_a3').value,
+        content:$('#wt_content').value, active:$('#wt_active').value==='1' };
+      if(t) Object.assign(t,obj); else { obj.id=uid(); DB.weeklyTemplates.push(obj); }
+      save(); closeModal(); toast('已儲存'); renderTab(CURRENT_TAB);
+    }},{label:'取消',cls:'btn-ghost',fn:closeModal}]);
+}
+function applyWtClass(){ const c=DB.classes.find(x=>x.name===$('#wt_class').value); if(!c)return; $('#wt_start').value=c.start; $('#wt_end').value=c.end; if(c.mainCoach)$('#wt_main').value=c.mainCoach; }
+function delWeekly(id){ if(!requirePerm('manageWeekly','只有館長或主教練可以刪除固定課')) return; confirmBox('刪除此固定課？',()=>{ DB.weeklyTemplates=DB.weeklyTemplates.filter(t=>t.id!==id); save(); renderTab(CURRENT_TAB); }); }
+function genWeekFromTemplate(){
+  if(!requirePerm('manageWeekly','只有館長或主教練可以產生週排班')) return;
+  const actives=DB.weeklyTemplates.filter(t=>t.active);
+  if(!actives.length){ toast('尚無啟用的固定週課表'); return; }
+  confirmBox('將依固定週課表為本週產生排班（已存在的同日同班別同時段會略過）。',()=>{
+    const {days}=weekRange(); let added=0;
+    actives.forEach(t=>{
+      const wdIdx=['週日','週一','週二','週三','週四','週五','週六'].indexOf(t.weekday);
+      const date=days.find(d=>new Date(d+'T00:00:00').getDay()===wdIdx);
+      if(!date) return;
+      if(DB.schedules.some(s=>s.date===date&&s.className===t.className&&s.start===t.start)) return;
+      const obj={ id:uid(), date, weekday:t.weekday, className:t.className, start:t.start, end:t.end,
+        mainCoach:t.mainCoach, a1:t.a1, a2:t.a2, a3:t.a3, content:t.content,
+        courseType:'一般上課', payRole:'主教練', status:'已排班', note:'(週課表產生)', temp:false };
+      ensureEntries(obj); DB.schedules.push(obj); added++;
+    });
+    save(); toast(`已產生 ${added} 筆本週排班`); switchTab('a-sched');
+  });
+}
+function genMonthFromTemplate(){
+  if(!requirePerm('manageWeekly','只有館長或主教練可以產生月排班')) return;
+  if(!monthScheduleMonth) monthScheduleMonth=monthStr();
+  const actives=DB.weeklyTemplates.filter(t=>t.active);
+  if(!actives.length){ toast('尚無啟用的固定週課表'); return; }
+  confirmBox(`將依固定週課表產生 ${monthScheduleMonth} 整月排班（已存在的同日同班別同時段會略過）。`,()=>{
+    const days=datesInMonth(monthScheduleMonth);
+    let added=0, skipped=0;
+    days.forEach(date=>{
+      const wd=weekdayOf(date);
+      actives.filter(t=>t.weekday===wd).forEach(t=>{
+        if(DB.schedules.some(s=>s.date===date&&s.className===t.className&&s.start===t.start)){
+          skipped++;
+          return;
+        }
+        const obj={ id:uid(), date, weekday:wd, className:t.className, start:t.start, end:t.end,
+          mainCoach:t.mainCoach, a1:t.a1, a2:t.a2, a3:t.a3, content:t.content,
+          courseType:'一般上課', payRole:'主教練', status:'已排班', note:'(月班表產生)', temp:false };
+        ensureEntries(obj); DB.schedules.push(obj); added++;
+      });
+    });
+    save();
+    toast(`已產生 ${added} 筆本月排班${skipped?`，略過 ${skipped} 筆重複`:''}`);
+    renderMonthSchedule();
+  });
+}
+
+/* =========================================================
+   館長：教練名單
+========================================================= */
+function renderPeople(){
+  if(!requirePerm('managePeople','教練名單管理限館長使用')) return;
+  $('#panel-a-people').innerHTML=`
+  <div class="section"><div class="section-header"><div class="section-title">🧑‍🏫 教練與助教名單</div>
+    <button class="btn btn-gold btn-xs" onclick="openPersonModal('')">＋ 新增</button></div>
+    <div class="section-body">${DB.people.map(p=>`
+      <div class="list-item"><div class="li-top"><div class="li-name">${esc(p.name)} ${p.active?'':'<span class="pill pill-gray">停用</span>'}</div>
+        <div class="li-actions"><button class="icon-btn" onclick="openPersonModal('${p.id}')">✏️</button><button class="icon-btn del" onclick="delPerson('${p.id}')">🗑️</button></div></div>
+      <div class="li-sub">身分：${esc(p.role)}｜酬勞身分：${esc(p.payRole)}${p.note?'｜'+esc(p.note):''}</div></div>`).join('')||'<div class="empty">尚無人員</div>'}</div>
+  </div>`;
+}
+function openPersonModal(id){
+  if(!requirePerm('managePeople','教練名單管理限館長使用')) return;
+  const p=id?DB.people.find(x=>x.id===id):null;
+  const roles=['館長','主教練','次教練','助教'];
+  openModal(id?'✏️ 編輯人員':'＋ 新增人員', `
+    <div class="form-row"><label class="form-label">姓名</label><input id="pe_name" class="form-input" value="${p?esc(p.name):''}"></div>
+    <div class="form-grid">
+      <div class="form-row"><label class="form-label">身分</label><select id="pe_role" class="form-select">${roles.map(r=>`<option ${p&&p.role===r?'selected':''}>${r}</option>`).join('')}</select></div>
+      <div class="form-row"><label class="form-label">預設酬勞身分</label><select id="pe_pay" class="form-select">${PAY_ROLES.map(r=>`<option ${p&&p.payRole===r?'selected':''}>${r}</option>`).join('')}</select></div>
+      <div class="form-row"><label class="form-label">是否啟用</label><select id="pe_active" class="form-select"><option value="1" ${!p||p.active?'selected':''}>啟用</option><option value="0" ${p&&!p.active?'selected':''}>停用</option></select></div>
+    </div>
+    <div class="form-row"><label class="form-label">備註</label><input id="pe_note" class="form-input" value="${p?esc(p.note||''):''}"></div>`,
+    [{label:'儲存',cls:'btn-primary',fn:()=>{
+      const name=$('#pe_name').value.trim(); if(!name){ toast('請輸入姓名'); return; }
+      const obj={ name, role:$('#pe_role').value, payRole:$('#pe_pay').value, active:$('#pe_active').value==='1', note:$('#pe_note').value };
+      if(p) Object.assign(p,obj); else { obj.id=uid(); DB.people.push(obj); }
+      save(); closeModal(); toast('已儲存'); renderTab(CURRENT_TAB);
+    }},{label:'取消',cls:'btn-ghost',fn:closeModal}]);
+}
+function delPerson(id){ if(!requirePerm('managePeople','教練名單管理限館長使用')) return; confirmBox('刪除此人員？',()=>{ DB.people=DB.people.filter(p=>p.id!==id); save(); renderTab(CURRENT_TAB); }); }
+
+/* =========================================================
+   館長：班別設定
+========================================================= */
+function renderClasses(){
+  if(!requirePerm('manageClasses','班別設定限館長使用')) return;
+  $('#panel-a-class').innerHTML=`
+  <div class="section"><div class="section-header"><div class="section-title">🏷️ 班別設定</div>
+    <button class="btn btn-gold btn-xs" onclick="openClassModal('')">＋ 新增</button></div>
+    <div class="section-body">${DB.classes.map(c=>`
+      <div class="list-item"><div class="li-top"><div class="li-name">${esc(c.name)}</div>
+        <div class="li-actions"><button class="icon-btn" onclick="openClassModal('${c.id}')">✏️</button><button class="icon-btn del" onclick="delClass('${c.id}')">🗑️</button></div></div>
+      <div class="li-sub">${esc(c.start)}–${esc(c.end)}｜預設主教練：${esc(c.mainCoach||'—')}｜助教人數：${c.assistantCount}${c.note?'｜'+esc(c.note):''}</div></div>`).join('')||'<div class="empty">尚無班別</div>'}</div>
+  </div>`;
+}
+function openClassModal(id){
+  if(!requirePerm('manageClasses','班別設定限館長使用')) return;
+  const c=id?DB.classes.find(x=>x.id===id):null;
+  const peopleOpts=v=>`<option value="">—</option>`+activePeople().map(p=>`<option ${v===p.name?'selected':''}>${esc(p.name)}</option>`).join('');
+  openModal(id?'✏️ 編輯班別':'＋ 新增班別', `
+    <div class="form-row"><label class="form-label">班別名稱</label><input id="cl_name" class="form-input" value="${c?esc(c.name):''}"></div>
+    <div class="form-grid">
+      <div class="form-row"><label class="form-label">預設開始</label><input id="cl_start" type="time" class="form-input" value="${c?c.start:'18:00'}"></div>
+      <div class="form-row"><label class="form-label">預設結束</label><input id="cl_end" type="time" class="form-input" value="${c?c.end:'19:30'}"></div>
+      <div class="form-row"><label class="form-label">預設主教練</label><select id="cl_main" class="form-select">${peopleOpts(c?c.mainCoach:'')}</select></div>
+      <div class="form-row"><label class="form-label">預設助教人數</label><input id="cl_ac" type="number" class="form-input" value="${c?c.assistantCount:1}"></div>
+    </div>
+    <div class="form-row"><label class="form-label">備註</label><input id="cl_note" class="form-input" value="${c?esc(c.note||''):''}"></div>`,
+    [{label:'儲存',cls:'btn-primary',fn:()=>{
+      const name=$('#cl_name').value.trim(); if(!name){ toast('請輸入班別名稱'); return; }
+      const obj={ name, start:$('#cl_start').value, end:$('#cl_end').value, mainCoach:$('#cl_main').value, assistantCount:+$('#cl_ac').value||0, note:$('#cl_note').value };
+      if(c) Object.assign(c,obj); else { obj.id=uid(); DB.classes.push(obj); }
+      save(); closeModal(); toast('已儲存'); renderTab(CURRENT_TAB);
+    }},{label:'取消',cls:'btn-ghost',fn:closeModal}]);
+}
+function delClass(id){ if(!requirePerm('manageClasses','班別設定限館長使用')) return; confirmBox('刪除此班別？',()=>{ DB.classes=DB.classes.filter(c=>c.id!==id); save(); renderTab(CURRENT_TAB); }); }
+
+/* =========================================================
+   館長：酬勞設定
+========================================================= */
+function renderPay(){
+  if(!requirePerm('managePay','酬勞設定限館長使用')) return;
+  $('#panel-a-pay').innerHTML=`
+  <div class="section"><div class="section-header"><div class="section-title">⚙️ 酬勞設定</div>
+    <button class="btn btn-gold btn-xs" onclick="openPayModal('')">＋ 新增項目</button></div>
+    <div class="section-body">
+      <div class="note">金額可自由調整，不寫死。固定酬勞對應排班的「酬勞身分」自動帶入；遲到扣款、代班加給在完成上課時自動計算。</div>
+      ${DB.salarySettings.map(s=>`
+      <div class="list-item"><div class="li-top"><div class="li-name">${esc(s.name)} <span class="pill ${s.type==='扣款'?'pill-red':s.type==='加給'?'pill-green':'pill-gold'}">${esc(s.type)}</span> ${s.active?'':'<span class="pill pill-gray">停用</span>'}</div>
+        <div style="display:flex;align-items:center;gap:8px"><span class="money" style="font-size:16px">$${fmtMoney(s.amount)}</span>
+        <div class="li-actions"><button class="icon-btn" onclick="openPayModal('${s.id}')">✏️</button><button class="icon-btn del" onclick="delPay('${s.id}')">🗑️</button></div></div></div></div>`).join('')}
+    </div>
+  </div>`;
+}
+function openPayModal(id){
+  if(!requirePerm('managePay','酬勞設定限館長使用')) return;
+  const s=id?DB.salarySettings.find(x=>x.id===id):null;
+  const types=['固定酬勞','加給','扣款'];
+  openModal(id?'✏️ 編輯酬勞項目':'＋ 新增酬勞項目', `
+    <div class="form-row"><label class="form-label">項目名稱</label><input id="ps_name" class="form-input" value="${s?esc(s.name):''}"></div>
+    <div class="form-grid">
+      <div class="form-row"><label class="form-label">金額</label><input id="ps_amt" type="number" class="form-input" value="${s?s.amount:0}"></div>
+      <div class="form-row"><label class="form-label">類型</label><select id="ps_type" class="form-select">${types.map(t=>`<option ${s&&s.type===t?'selected':''}>${t}</option>`).join('')}</select></div>
+      <div class="form-row"><label class="form-label">是否啟用</label><select id="ps_active" class="form-select"><option value="1" ${!s||s.active?'selected':''}>啟用</option><option value="0" ${s&&!s.active?'selected':''}>停用</option></select></div>
+      <div class="form-row"><label class="form-label">對應代號</label><select id="ps_key" class="form-select">
+        <option value="">（無 / 自訂）</option>
+        ${['主教練','次教練','助教','獨立帶課'].map(k=>`<option value="${k}" ${s&&s.payKey===k?'selected':''}>${k}（固定酬勞）</option>`).join('')}
+        <option value="late" ${s&&s.payKey==='late'?'selected':''}>late（遲到扣款）</option>
+        <option value="sub" ${s&&s.payKey==='sub'?'selected':''}>sub（代班加給）</option>
+      </select></div>
+    </div>
+    <div class="section-hint">「對應代號」讓系統自動套用：主/次/助教/獨立帶課＝基本酬勞；late＝遲到扣款；sub＝代班加給。自訂項目可留空。</div>`,
+    [{label:'儲存',cls:'btn-primary',fn:()=>{
+      const obj={ name:$('#ps_name').value.trim(), amount:+$('#ps_amt').value||0, type:$('#ps_type').value, active:$('#ps_active').value==='1', payKey:$('#ps_key').value };
+      if(!obj.name){ toast('請輸入名稱'); return; }
+      if(s) Object.assign(s,obj); else { obj.id=uid(); DB.salarySettings.push(obj); }
+      save(); closeModal(); toast('已儲存'); renderTab(CURRENT_TAB);
+    }},{label:'取消',cls:'btn-ghost',fn:closeModal}]);
+}
+function delPay(id){ if(!requirePerm('managePay','酬勞設定限館長使用')) return; confirmBox('刪除此酬勞項目？',()=>{ DB.salarySettings=DB.salarySettings.filter(s=>s.id!==id); save(); renderTab(CURRENT_TAB); }); }
+
+/* =========================================================
+   館長：上課紀錄
+========================================================= */
+function renderRecords(){
+  if(!requirePerm('manageRecords','上課與酬勞紀錄管理限館長使用')) return;
+  const recs=DB.salaryRecords.slice().sort((a,b)=>(b.date+b.id).localeCompare(a.date+a.id));
+  $('#panel-a-records').innerHTML=`
+  <div class="section"><div class="section-header"><div class="section-title">📒 上課 / 酬勞紀錄</div></div>
+    <div class="section-body section-hint">由教練「完成上課」自動產生，可手動調整或刪除。</div>
+    <div class="section-body" style="padding-top:0">${ recs.length? recs.map(r=>`
+      <div class="list-item"><div class="li-top"><div class="li-name">${esc(r.date)}｜${esc(r.className)}</div>
+        <div style="display:flex;align-items:center;gap:8px"><span class="money">$${fmtMoney(r.net)}</span>
+        <div class="li-actions"><button class="icon-btn" onclick="openSalaryRecModal('${r.id}')">✏️</button><button class="icon-btn del" onclick="delSalaryRec('${r.id}')">🗑️</button></div></div></div>
+      <div class="li-sub">${esc(r.personName)}（${esc(r.role)}）｜基本 $${fmtMoney(r.base)}${r.bonus?'｜+$'+fmtMoney(r.bonus):''}${r.deduct?'｜-$'+fmtMoney(r.deduct):''}｜${esc(r.status)}${r.paid?'｜已付款':''}${r.note?'｜'+esc(r.note):''}</div></div>`).join('') : '<div class="empty">尚無酬勞紀錄</div>' }</div>
+  </div>
+  <div class="section"><div class="section-header"><div class="section-title">📝 課後復盤紀錄</div></div>
+    <div class="section-body">${ DB.reviews.length? DB.reviews.slice().reverse().map(r=>`
+      <div class="list-item"><div class="li-top"><div class="li-name">${esc(r.date)}｜${esc(r.className)}</div><span class="pill pill-gold">${esc(r.grade)}級 ${r.total.toFixed(1)}</span></div>
+      <div class="li-sub">${esc(r.coach)}｜🎯 ${esc(r.next||'—')}</div></div>`).join('') : '<div class="empty">尚無復盤紀錄</div>' }</div>
+  </div>`;
+}
+function openSalaryRecModal(id){
+  if(!requirePerm('manageRecords','酬勞紀錄調整限館長使用')) return;
+  const r=DB.salaryRecords.find(x=>x.id===id);
+  openModal('✏️ 調整酬勞紀錄', `
+    <div class="mini">${esc(r.date)}｜${esc(r.className)}｜${esc(r.personName)}</div>
+    <div class="form-grid" style="margin-top:10px">
+      <div class="form-row"><label class="form-label">身分</label><select id="sr_role" class="form-select">${PAY_ROLES.map(x=>`<option ${r.role===x?'selected':''}>${x}</option>`).join('')}</select></div>
+      <div class="form-row"><label class="form-label">基本酬勞</label><input id="sr_base" type="number" class="form-input" value="${r.base}"></div>
+      <div class="form-row"><label class="form-label">加給</label><input id="sr_bonus" type="number" class="form-input" value="${r.bonus}"></div>
+      <div class="form-row"><label class="form-label">扣款</label><input id="sr_deduct" type="number" class="form-input" value="${r.deduct}"></div>
+      <div class="form-row"><label class="form-label">狀態</label><select id="sr_status" class="form-select">${['未結算','已結算','已付款'].map(x=>`<option ${r.status===x?'selected':''}>${x}</option>`).join('')}</select></div>
+    </div>
+    <div class="form-row"><label class="form-label">備註</label><input id="sr_note" class="form-input" value="${esc(r.note||'')}"></div>`,
+    [{label:'儲存',cls:'btn-primary',fn:()=>{
+      r.role=$('#sr_role').value; r.base=+$('#sr_base').value||0; r.bonus=+$('#sr_bonus').value||0; r.deduct=+$('#sr_deduct').value||0;
+      r.net=r.base+r.bonus-r.deduct; r.status=$('#sr_status').value; r.paid=r.status==='已付款'; r.note=$('#sr_note').value;
+      save(); closeModal(); toast('已更新'); renderTab(CURRENT_TAB);
+    }},{label:'取消',cls:'btn-ghost',fn:closeModal}]);
+}
+function delSalaryRec(id){ if(!requirePerm('manageRecords','酬勞紀錄刪除限館長使用')) return; confirmBox('刪除此酬勞紀錄？',()=>{ DB.salaryRecords=DB.salaryRecords.filter(r=>r.id!==id); save(); renderTab(CURRENT_TAB); }); }
+
+/* =========================================================
+   館長：酬勞結算
+========================================================= */
+let settleMonth='';
+function renderSettle(){
+  if(!requirePerm('settleSalary','酬勞結算限館長使用')) return;
+  if(!settleMonth) settleMonth=monthStr();
+  const recs=DB.salaryRecords.filter(r=>r.month===settleMonth);
+  const byPerson={}; recs.forEach(r=>{ (byPerson[r.personName]=byPerson[r.personName]||[]).push(r); });
+  const monthSubs=DB.substituteRecords.filter(s=>monthStr(s.date)===settleMonth);
+  const monthLeaves=DB.leaveRequests.filter(l=>monthStr(l.date)===settleMonth);
+  const names=Object.keys(byPerson);
+  const grand=recs.reduce((a,r)=>a+r.net,0);
+  $('#panel-a-settle').innerHTML=`
+  <div class="section"><div class="section-header"><div class="section-title">🧮 酬勞結算</div></div>
+    <div class="section-body">
+      <div class="form-grid">
+        <div class="form-row"><label class="form-label">月份</label><input type="month" class="form-input" value="${settleMonth}" onchange="settleMonth=this.value;renderSettle()"></div>
+        <div class="form-row"><label class="form-label">本月總額</label><input class="form-input" value="$${fmtMoney(grand)}" readonly></div>
+      </div>
+      <div class="btn-row">
+        <button class="btn btn-secondary btn-sm" onclick="exportSalaryCSV()">📄 匯出本月 CSV</button>
+        <button class="btn btn-line btn-sm" onclick="lineSalaryReport()">💬 LINE 酬勞回報</button>
+      </div>
+    </div>
+  </div>
+  <div style="margin:0 16px">${ names.length? names.map(n=>settleCard(n,byPerson[n],monthSubs,monthLeaves)).join('') : '<div class="empty">本月尚無酬勞紀錄</div>' }</div>`;
+}
+function personSummary(name, recs, subs, leaves){
+  const cnt=role=>recs.filter(r=>r.role===role).length;
+  return { lessons:recs.length, main:cnt('主教練'), second:cnt('次教練'), assist:cnt('助教'), solo:cnt('獨立帶課'),
+    sub:subs.filter(s=>s.subCoach===name).length, late:recs.filter(r=>r.deduct>0).length,
+    leave:leaves.filter(l=>l.originPerson===name).length,
+    base:recs.reduce((a,r)=>a+r.base,0), bonus:recs.reduce((a,r)=>a+r.bonus,0),
+    deduct:recs.reduce((a,r)=>a+r.deduct,0), net:recs.reduce((a,r)=>a+r.net,0),
+    paid:recs.length>0 && recs.every(r=>r.paid) };
+}
+function settleCard(name, recs, subs, leaves){
+  const s=personSummary(name,recs,subs,leaves);
+  return `<div class="settle-row">
+    <div class="settle-head" onclick="this.parentNode.querySelector('.settle-detail').classList.toggle('show')">
+      <div><div class="li-name">${esc(name)} ${s.paid?'<span class="pill pill-green">已付款</span>':'<span class="pill pill-orange">未付款</span>'}</div>
+        <div class="li-sub">上課 ${s.lessons}（主${s.main}/次${s.second}/助${s.assist}/獨${s.solo}）｜代${s.sub}｜遲${s.late}｜假${s.leave}</div></div>
+      <div class="settle-net money">$${fmtMoney(s.net)}</div>
+    </div>
+    <div class="settle-detail">
+      <div class="li-sub" style="margin-bottom:8px">原始 $${fmtMoney(s.base)}｜加給 +$${fmtMoney(s.bonus)}｜扣款 -$${fmtMoney(s.deduct)}｜實領 <b class="money">$${fmtMoney(s.net)}</b></div>
+      ${recs.slice().sort((a,b)=>a.date.localeCompare(b.date)).map(r=>`<div class="detail-line">${esc(r.date)}｜${esc(r.className)}｜${esc(r.role)}｜原 $${fmtMoney(r.base)} +$${fmtMoney(r.bonus)} -$${fmtMoney(r.deduct)} = <b class="money">$${fmtMoney(r.net)}</b>｜${esc(r.status)}${r.note?'｜'+esc(r.note):''}</div>`).join('')}
+      <div class="btn-row" style="margin-top:10px">
+        <button class="btn btn-blue btn-xs" onclick="markPerson('${esc(name)}','已結算')">標記已結算</button>
+        <button class="btn btn-green btn-xs" onclick="markPerson('${esc(name)}','已付款')">標記已付款</button>
+      </div>
+    </div>
+  </div>`;
+}
+function markPerson(name, status){
+  if(!requirePerm('settleSalary','酬勞結算狀態限館長更新')) return;
+  DB.salaryRecords.filter(r=>r.personName===name && r.month===settleMonth).forEach(r=>{ r.status=status; if(status==='已付款') r.paid=true; });
+  save(); toast(name+' 已標記為「'+status+'」'); renderTab(CURRENT_TAB);
+}
+
+/* =========================================================
+   館長：LINE 回報
+========================================================= */
+function renderLine(){
+  const canLineSalary=hasPerm('lineSalary');
+  $('#panel-a-line').innerHTML=`
+  <div class="section"><div class="section-header"><div class="section-title">💬 LINE 回報文字</div></div>
+    <div class="section-body">
+      <div class="btn-row">
+        <button class="btn btn-line btn-sm" onclick="showLine('today')">📅 今日排班</button>
+        <button class="btn btn-line btn-sm" onclick="showLine('week')">🗓️ 本週排班</button>
+        ${canLineSalary?`<button class="btn btn-line btn-sm" onclick="showLine('salary')">💰 月底酬勞</button>`:''}
+      </div>
+      <div id="lineOut" class="result" style="margin-top:12px">點上方按鈕產生 LINE 回報文字。</div>
+      <div class="btns2" style="margin-top:10px">
+        <button class="btn btn-secondary btn-sm" onclick="copyText($('#lineOut').textContent)">📋 複製</button>
+        <button class="btn btn-line btn-sm" onclick="shareLine($('#lineOut').textContent)">💬 開啟 LINE</button>
+      </div>
+    </div>
+  </div>`;
+}
+function showLine(type){
+  if(type==='salary' && !requirePerm('lineSalary','月底酬勞 LINE 回報限館長使用')) return;
+  $('#lineOut').textContent = type==='today'?lineToday() : type==='week'?lineWeek() : lineSalary();
+}
+function lineToday(){
+  const t=todayStr(); const list=DB.schedules.filter(s=>s.date===t&&s.status!=='取消').sort((a,b)=>a.start.localeCompare(b.start));
+  let txt=`【雄麒道館｜今日排班】\n\n日期：${t.replace(/-/g,'/')}（${weekdayOf(t).slice(1)}）\n`;
+  if(!list.length) txt+='\n今日無排班。';
+  list.forEach(s=>{ const assist=[s.a1,s.a2,s.a3].filter(Boolean).join('、')||'—';
+    txt+=`\n${s.start}–${s.end} ${s.className}\n主教練：${s.mainCoach||'—'}\n助教：${assist}\n課程：${s.content||'—'}\n`; });
+  txt+='\n請教練與助教提前 10 分鐘到場。\n以禮始，以禮終。';
+  return txt;
+}
+function lineWeek(){
+  const {days}=weekRange();
+  let txt='【雄麒道館｜本週教練排班】\n';
+  days.forEach(d=>{ const list=DB.schedules.filter(s=>s.date===d&&s.status!=='取消').sort((a,b)=>a.start.localeCompare(b.start));
+    if(!list.length) return; txt+=`\n${weekdayOf(d)}\n`;
+    list.forEach(s=>{ const assist=[s.a1,s.a2,s.a3].filter(Boolean).join('、')||'—';
+      txt+=`${s.start}–${s.end} ${s.className}｜主教練：${s.mainCoach||'—'}｜助教：${assist}\n`; }); });
+  txt+='\n請依照排班準時到場。\n若需請假，請提前回報並協助找代班。';
+  return txt;
+}
+function lineSalary(){
+  if(!hasPerm('lineSalary')) return '此酬勞回報限館長使用。';
+  const m=settleMonth||monthStr();
+  const recs=DB.salaryRecords.filter(r=>r.month===m);
+  const subs=DB.substituteRecords.filter(s=>monthStr(s.date)===m);
+  const leaves=DB.leaveRequests.filter(l=>monthStr(l.date)===m);
+  const byPerson={}; recs.forEach(r=>{(byPerson[r.personName]=byPerson[r.personName]||[]).push(r);});
+  let txt=`【雄麒道館｜${+m.slice(5,7)}月教練助教酬勞結算】\n`;
+  Object.keys(byPerson).forEach(n=>{ const s=personSummary(n,byPerson[n],subs,leaves);
+    txt+=`\n${n}\n上課：${s.lessons}堂\n代班：${s.sub}堂\n遲到：${s.late}次\n請假：${s.leave}次\n實領：${fmtMoney(s.net)}元\n狀態：${s.paid?'已付款':'未付款'}\n`; });
+  if(!Object.keys(byPerson).length) txt+='\n本月尚無酬勞資料。';
+  txt+='\n若資料有誤，請於今晚前回覆。';
+  return txt;
+}
+function lineSalaryReport(){ if(!requirePerm('lineSalary','月底酬勞 LINE 回報限館長使用')) return; switchTab('a-line'); setTimeout(()=>showLine('salary'),60); }
+
+/* =========================================================
+   館長：資料管理
+========================================================= */
+function renderData(){
+  if(!requirePerm('manageData','資料管理限館長使用')) return;
+  $('#panel-a-data').innerHTML=`
+  <div class="section"><div class="section-header"><div class="section-title">💾 資料管理</div></div>
+    <div class="section-body">
+      <div class="note">資料儲存於此瀏覽器（localStorage）。建議定期匯出 JSON 備份。</div>
+      <div class="btn-row" style="margin-bottom:10px">
+        <button class="btn btn-gold btn-sm" onclick="exportJSON()">⬇️ 匯出 JSON 備份</button>
+        <button class="btn btn-secondary btn-sm" onclick="$('#importFile').click()">⬆️ 匯入 JSON</button>
+      </div>
+      <input type="file" id="importFile" accept=".json" style="display:none" onchange="importJSON(this)">
+      <div class="btn-row" style="margin-bottom:10px">
+        <button class="btn btn-secondary btn-sm" onclick="exportAllCSV()">📄 匯出排班 CSV</button>
+        <button class="btn btn-secondary btn-sm" onclick="settleMonth='';exportSalaryCSV()">📄 匯出全部酬勞 CSV</button>
+      </div>
+      <div class="form-row"><label class="form-label">館長密碼</label>
+        <div class="btn-row"><input id="newPw" class="form-input" style="flex:1;min-width:120px" placeholder="輸入新密碼">
+          <button class="btn btn-secondary btn-sm" onclick="changePw()">更新密碼</button></div></div>
+      <button class="btn btn-red btn-block" style="margin-top:14px" onclick="clearAll()">🗑️ 清除所有資料</button>
+    </div>
+  </div>
+  <div class="section"><div class="section-header"><div class="section-title">📊 資料統計</div></div>
+    <div class="section-body"><div class="dash-grid g3">
+      <div class="stat"><div class="num">${DB.people.length}</div><div class="cap">人員</div></div>
+      <div class="stat"><div class="num">${DB.classes.length}</div><div class="cap">班別</div></div>
+      <div class="stat"><div class="num">${DB.schedules.length}</div><div class="cap">排班</div></div>
+      <div class="stat"><div class="num">${DB.weeklyTemplates.length}</div><div class="cap">固定課</div></div>
+      <div class="stat"><div class="num">${DB.salaryRecords.length}</div><div class="cap">酬勞筆</div></div>
+      <div class="stat"><div class="num">${DB.reviews.length}</div><div class="cap">復盤</div></div>
+    </div></div>
+  </div>`;
+}
+function exportJSON(){ if(!requirePerm('manageData','資料匯出限館長使用')) return; dl(new Blob([JSON.stringify(DB,null,2)],{type:'application/json'}), `雄麒道館備份_${todayStr()}.json`); toast('已匯出 JSON'); }
+function importJSON(input){
+  if(!requirePerm('manageData','資料匯入限館長使用')){ input.value=''; return; }
+  const f=input.files[0]; if(!f) return;
+  const r=new FileReader();
+  r.onload=e=>{ try{ const d=JSON.parse(e.target.result); DB=Object.assign(defaultDB(),d); save(); toast('✅ 匯入成功'); renderTab(CURRENT_TAB); }
+    catch(err){ toast('匯入失敗：檔案格式錯誤'); } };
+  r.readAsText(f); input.value='';
+}
+function csvCell(v){ v=String(v==null?'':v); return /[",\n]/.test(v)?'"'+v.replace(/"/g,'""')+'"':v; }
+function exportAllCSV(){
+  if(!requirePerm('manageData','排班 CSV 匯出限館長使用')) return;
+  const head=['日期','星期','班別','開始','結束','主教練','助教1','助教2','助教3','課程內容','酬勞身分','狀態','備註'];
+  const rows=DB.schedules.map(s=>[s.date,s.weekday,s.className,s.start,s.end,s.mainCoach,s.a1,s.a2,s.a3,s.content,s.payRole,s.status,s.note]);
+  dlCSV(head,rows,`排班_${todayStr()}.csv`);
+}
+function exportSalaryCSV(){
+  if(!requirePerm('settleSalary','酬勞 CSV 匯出限館長使用')) return;
+  const m=settleMonth||monthStr();
+  const head=['日期','班別','人員','身分','基本酬勞','加給','扣款','實領','狀態','備註'];
+  const rows=DB.salaryRecords.filter(r=>!settleMonth||r.month===m).map(r=>[r.date,r.className,r.personName,r.role,r.base,r.bonus,r.deduct,r.net,r.status,r.note]);
+  dlCSV(head,rows,`酬勞_${settleMonth||'全部'}.csv`);
+}
+function dlCSV(head,rows,name){ const csv=[head,...rows].map(r=>r.map(csvCell).join(',')).join('\r\n');
+  dl(new Blob(['﻿'+csv],{type:'text/csv;charset=utf-8'}),name); toast('已匯出 CSV'); }
+function dl(blob,name){ const a=document.createElement('a'); a.href=URL.createObjectURL(blob); a.download=name; a.click(); setTimeout(()=>URL.revokeObjectURL(a.href),1000); }
+function changePw(){ if(!requirePerm('manageData','修改館長密碼限館長使用')) return; const v=$('#newPw').value.trim(); if(!v){ toast('請輸入新密碼'); return; } DB.adminSettings.adminPw=v; save(); $('#newPw').value=''; toast('🔒 館長密碼已更新'); }
+function clearAll(){ if(!requirePerm('manageData','清除所有資料限館長使用')) return; confirmBox('⚠️ 確定清除所有資料？此動作無法復原（建議先匯出備份）。',()=>{ localStorage.removeItem(KEY); DB=defaultDB(); save(); toast('已清除，回到預設'); renderTab(CURRENT_TAB); }); }
+
+/* =========================================================
+   共用：Modal / 確認 / 複製 / LINE
+========================================================= */
+function openModal(title, bodyHtml, buttons){
+  $('#modalTitle').textContent=title; $('#modalBody').innerHTML=bodyHtml;
+  const foot=$('#modalFoot'); foot.innerHTML='';
+  (buttons||[]).forEach(b=>{ const el=document.createElement('button'); el.className='btn '+(b.cls||'btn-secondary'); el.textContent=b.label; el.onclick=b.fn; foot.appendChild(el); });
+  $('#modal').classList.add('show');
+}
+function closeModal(){ $('#modal').classList.remove('show'); }
+function confirmBox(msg, onYes){
+  openModal('請確認', `<div class="mini" style="line-height:1.8">${esc(msg)}</div>`,
+    [{label:'確定',cls:'btn-red',fn:()=>{ closeModal(); onYes(); }},{label:'取消',cls:'btn-ghost',fn:closeModal}]);
+}
+function copyText(t){
+  if(navigator.clipboard&&navigator.clipboard.writeText){ navigator.clipboard.writeText(t).then(()=>toast('已複製')).catch(()=>fallbackCopy(t)); }
+  else fallbackCopy(t);
+}
+function fallbackCopy(t){ const ta=document.createElement('textarea'); ta.value=t; document.body.appendChild(ta); ta.select(); try{document.execCommand('copy');toast('已複製');}catch(e){toast('複製失敗，請長按選取');} document.body.removeChild(ta); }
+function shareLine(t){ copyText(t); window.open('https://line.me/R/share?text='+encodeURIComponent(t),'_blank'); }
+
+/* 啟動 */
+goHome();
+initCloudSync();
+</script>
 </body>
 </html>
