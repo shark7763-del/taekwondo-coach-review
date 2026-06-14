@@ -1430,8 +1430,11 @@ function renderWeekly(){
   <div class="section"><div class="section-header"><div class="section-title">🗓️ 固定週課表</div>
     <button class="btn btn-gold btn-xs" onclick="openWeeklyModal('')">＋ 新增</button></div>
     <div class="section-body">
-      <div class="note">設定每週固定課程後，按下方按鈕可一鍵產生「本週」每日排班。</div>
-      <button class="btn btn-blue btn-block" onclick="genWeekFromTemplate()">⚙️ 產生本週排班</button>
+      <div class="note">固定週課表是模板。要讓月班表出現資料，請用「產生本月排班」把固定課展開到整個月份。</div>
+      <div class="btns2">
+        <button class="btn btn-blue" onclick="genMonthFromTemplate()">📆 產生本月排班</button>
+        <button class="btn btn-secondary" onclick="genWeekFromTemplate()">⚙️ 產生本週排班</button>
+      </div>
     </div>
   </div>
   ${['週一','週二','週三','週四','週五','週六','週日'].map(w=>{
