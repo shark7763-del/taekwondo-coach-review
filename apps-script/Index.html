@@ -1294,6 +1294,16 @@ function monthCalendarDays(ym){
   }
   return days;
 }
+function datesInMonth(ym){
+  const first=new Date(ym+'-01T00:00:00');
+  const days=[];
+  const d=new Date(first);
+  while(d.getMonth()===first.getMonth()){
+    days.push(d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0')+'-'+String(d.getDate()).padStart(2,'0'));
+    d.setDate(d.getDate()+1);
+  }
+  return days;
+}
 function renderMonthSchedule(){
   if(!requirePerm('manageSchedule','只有館長或主教練可以查看月班表')) return;
   if(!monthScheduleMonth) monthScheduleMonth=monthStr();
@@ -1314,6 +1324,10 @@ function renderMonthSchedule(){
       <div class="form-grid">
         <div class="form-row"><label class="form-label">查看月份</label><input type="month" class="form-input" value="${monthScheduleMonth}" onchange="monthScheduleMonth=this.value;renderMonthSchedule()"></div>
         <div class="form-row"><label class="form-label">快速切換</label><div class="btn-row"><button class="btn btn-secondary btn-sm" onclick="shiftMonth(-1)">上月</button><button class="btn btn-secondary btn-sm" onclick="monthScheduleMonth=monthStr();renderMonthSchedule()">本月</button><button class="btn btn-secondary btn-sm" onclick="shiftMonth(1)">下月</button></div></div>
+      </div>
+      <div class="btns2" style="margin-bottom:12px">
+        <button class="btn btn-blue btn-sm" onclick="genMonthFromTemplate()">⚙️ 固定週課表產生本月</button>
+        <button class="btn btn-orange btn-sm" onclick="openSchedModal('',true)">⚡ 臨時加課</button>
       </div>
       <div class="dash-grid g3">
         <div class="stat"><div class="num">${monthList.length}</div><div class="cap">本月排班堂數</div></div>
@@ -1472,6 +1486,32 @@ function genWeekFromTemplate(){
       ensureEntries(obj); DB.schedules.push(obj); added++;
     });
     save(); toast(`已產生 ${added} 筆本週排班`); switchTab('a-sched');
+  });
+}
+function genMonthFromTemplate(){
+  if(!requirePerm('manageWeekly','只有館長或主教練可以產生月排班')) return;
+  if(!monthScheduleMonth) monthScheduleMonth=monthStr();
+  const actives=DB.weeklyTemplates.filter(t=>t.active);
+  if(!actives.length){ toast('尚無啟用的固定週課表'); return; }
+  confirmBox(`將依固定週課表產生 ${monthScheduleMonth} 整月排班（已存在的同日同班別同時段會略過）。`,()=>{
+    const days=datesInMonth(monthScheduleMonth);
+    let added=0, skipped=0;
+    days.forEach(date=>{
+      const wd=weekdayOf(date);
+      actives.filter(t=>t.weekday===wd).forEach(t=>{
+        if(DB.schedules.some(s=>s.date===date&&s.className===t.className&&s.start===t.start)){
+          skipped++;
+          return;
+        }
+        const obj={ id:uid(), date, weekday:wd, className:t.className, start:t.start, end:t.end,
+          mainCoach:t.mainCoach, a1:t.a1, a2:t.a2, a3:t.a3, content:t.content,
+          payRole:'主教練', status:'已排班', note:'(月班表產生)', temp:false };
+        ensureEntries(obj); DB.schedules.push(obj); added++;
+      });
+    });
+    save();
+    toast(`已產生 ${added} 筆本月排班${skipped?`，略過 ${skipped} 筆重複`:''}`);
+    renderMonthSchedule();
   });
 }
 
