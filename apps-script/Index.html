@@ -159,6 +159,19 @@ body{ background:
 .money{ color:var(--accent-bright); font-weight:900; }
 .empty{ color:var(--text-dim); text-align:center; padding:24px; font-size:13px; }
 .mini{ font-size:12px; color:var(--text-mid); line-height:1.7; }
+.month-grid{ display:grid; grid-template-columns:repeat(7,1fr); gap:6px; }
+.month-head{ font-size:10px; color:var(--accent); text-align:center; font-weight:800; padding:4px 0; }
+.month-day{ min-height:86px; background:var(--bg-card-2); border:1px solid var(--border); border-radius:10px; padding:7px 6px; overflow:hidden; }
+.month-day.muted{ opacity:.38; }
+.month-date{ font-size:11px; font-weight:900; color:var(--accent-bright); margin-bottom:5px; }
+.month-item{ font-size:10px; line-height:1.45; padding:5px 0; border-top:1px solid rgba(42,49,73,.65); color:var(--text-mid); }
+.month-item b{ color:var(--text); font-size:11px; display:block; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+.month-item.cancelled{ opacity:.55; text-decoration:line-through; }
+@media(max-width:520px){
+  .month-grid{ gap:4px; }
+  .month-day{ min-height:76px; padding:6px 4px; border-radius:8px; }
+  .month-item{ font-size:9px; }
+}
 
 /* 列表項 */
 .list-item{ background:var(--bg-card-2); border:1px solid var(--border); border-radius:12px; padding:12px; margin-bottom:9px; }
@@ -496,6 +509,7 @@ const COACH_TABS=[
 const ADMIN_TABS=[
   {id:'a-dash',   label:'今日總覽', icon:'🏠'},
   {id:'a-sched',  label:'排班管理', icon:'📋'},
+  {id:'a-month',  label:'月班表', icon:'📆'},
   {id:'a-weekly', label:'固定週課表', icon:'🗓️'},
   {id:'a-people', label:'教練名單', icon:'🧑‍🏫'},
   {id:'a-class',  label:'班別設定', icon:'🏷️'},
@@ -512,7 +526,7 @@ const ROLE_PERMISSIONS={
     actions:['viewSalaryTotal','manageSchedule','deleteSchedule','manageWeekly','confirmLeave','confirmSub','managePeople','manageClasses','managePay','manageRecords','viewCoachEval','settleSalary','lineSalary','manageData']
   },
   '主教練':{
-    tabs:['a-dash','a-sched','a-weekly','a-coach-eval','a-line'],
+    tabs:['a-dash','a-sched','a-month','a-weekly','a-coach-eval','a-line'],
     actions:['manageSchedule','manageWeekly','confirmLeave','viewCoachEval']
   },
   '次教練':{
@@ -559,7 +573,7 @@ function renderTab(id){
   ({
     'c-today':renderCoachToday, 'c-week':renderCoachWeek, 'c-leave':renderCoachLeave,
     'c-review':renderReview, 'c-salary':renderCoachSalary,
-    'a-dash':renderDash, 'a-sched':renderSched, 'a-weekly':renderWeekly, 'a-people':renderPeople,
+    'a-dash':renderDash, 'a-sched':renderSched, 'a-month':renderMonthSchedule, 'a-weekly':renderWeekly, 'a-people':renderPeople,
     'a-class':renderClasses, 'a-pay':renderPay, 'a-records':renderRecords, 'a-coach-eval':renderCoachEval, 'a-settle':renderSettle,
     'a-line':renderLine, 'a-data':renderData,
   }[id]||(()=>{}))();
@@ -1215,6 +1229,7 @@ function confirmSub(id){
    館長：排班管理
 ========================================================= */
 let schedFilterDate='';
+let monthScheduleMonth='';
 function timeOverlap(aStart,aEnd,bStart,bEnd){ return aStart < bEnd && bStart < aEnd; }
 function scheduleIssues(obj, excludeId){
   const issues=[];
@@ -1259,6 +1274,77 @@ function renderSched(){
     </div>
   </div>
   <div style="margin:0 16px">${ list.length? list.map(s=>adminSchedRow(s,true)).join('') : '<div class="empty">此條件下沒有排班</div>' }</div>`;
+}
+function shiftMonth(delta){
+  if(!monthScheduleMonth) monthScheduleMonth=monthStr();
+  const d=new Date(monthScheduleMonth+'-01T00:00:00');
+  d.setMonth(d.getMonth()+delta);
+  monthScheduleMonth=d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0');
+  renderMonthSchedule();
+}
+function monthCalendarDays(ym){
+  const first=new Date(ym+'-01T00:00:00');
+  const start=new Date(first);
+  start.setDate(first.getDate()-first.getDay());
+  const days=[];
+  for(let i=0;i<42;i++){
+    const d=new Date(start);
+    d.setDate(start.getDate()+i);
+    days.push(d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0')+'-'+String(d.getDate()).padStart(2,'0'));
+  }
+  return days;
+}
+function renderMonthSchedule(){
+  if(!requirePerm('manageSchedule','只有館長或主教練可以查看月班表')) return;
+  if(!monthScheduleMonth) monthScheduleMonth=monthStr();
+  DB.schedules.forEach(ensureEntries);
+  const monthList=DB.schedules
+    .filter(s=>(s.date||'').slice(0,7)===monthScheduleMonth)
+    .sort((a,b)=>(a.date+a.start).localeCompare(b.date+b.start));
+  const done=monthList.filter(s=>s.status==='已上課'||s.entries.some(e=>e.completed)).length;
+  const cancelled=monthList.filter(s=>s.status==='取消').length;
+  const coachCount=new Set(monthList.flatMap(s=>[s.mainCoach,s.a1,s.a2,s.a3].filter(Boolean))).size;
+  const byDate={};
+  monthList.forEach(s=>{ (byDate[s.date]=byDate[s.date]||[]).push(s); });
+  const days=monthCalendarDays(monthScheduleMonth);
+  $('#panel-a-month').innerHTML=`
+  <div class="section"><div class="section-header"><div class="section-title">📆 月班表</div>
+    <button class="btn btn-gold btn-xs" onclick="openSchedModal('')">＋ 新增排班</button></div>
+    <div class="section-body">
+      <div class="form-grid">
+        <div class="form-row"><label class="form-label">查看月份</label><input type="month" class="form-input" value="${monthScheduleMonth}" onchange="monthScheduleMonth=this.value;renderMonthSchedule()"></div>
+        <div class="form-row"><label class="form-label">快速切換</label><div class="btn-row"><button class="btn btn-secondary btn-sm" onclick="shiftMonth(-1)">上月</button><button class="btn btn-secondary btn-sm" onclick="monthScheduleMonth=monthStr();renderMonthSchedule()">本月</button><button class="btn btn-secondary btn-sm" onclick="shiftMonth(1)">下月</button></div></div>
+      </div>
+      <div class="dash-grid g3">
+        <div class="stat"><div class="num">${monthList.length}</div><div class="cap">本月排班堂數</div></div>
+        <div class="stat"><div class="num good">${done}</div><div class="cap">已完成上課</div></div>
+        <div class="stat"><div class="num blue">${coachCount}</div><div class="cap">參與教練</div></div>
+      </div>
+      ${cancelled?`<div class="note" style="margin-top:12px">本月取消課程：${cancelled} 堂</div>`:''}
+    </div>
+  </div>
+  <div class="section"><div class="section-header"><div class="section-title">${monthScheduleMonth} 月曆班表</div></div>
+    <div class="section-body">
+      <div class="month-grid">
+        ${WD.map(w=>`<div class="month-head">${w.replace('週','')}</div>`).join('')}
+        ${days.map(d=>{
+          const items=(byDate[d]||[]).sort((a,b)=>a.start.localeCompare(b.start));
+          return `<div class="month-day ${d.slice(0,7)===monthScheduleMonth?'':'muted'}">
+            <div class="month-date">${+d.slice(8)}日</div>
+            ${items.slice(0,4).map(s=>`<div class="month-item ${s.status==='取消'?'cancelled':''}">
+              <b>${esc(s.start)} ${esc(s.className)}</b>
+              主:${esc(s.mainCoach||'—')}<br>助:${esc([s.a1,s.a2,s.a3].filter(Boolean).join('、')||'—')}
+            </div>`).join('')}
+            ${items.length>4?`<div class="month-item">另 ${items.length-4} 堂...</div>`:''}
+          </div>`;
+        }).join('')}
+      </div>
+      ${monthList.length?'':'<div class="empty">本月尚無排班，請到「固定週課表」產生，或按右上角新增排班。</div>'}
+    </div>
+  </div>
+  <div class="section"><div class="section-header"><div class="section-title">本月明細</div></div>
+    <div class="section-body">${monthList.length?monthList.map(s=>adminSchedRow(s,false)).join(''):'<div class="empty">尚無明細</div>'}</div>
+  </div>`;
 }
 function adminSchedRow(s, full){
   ensureEntries(s);
