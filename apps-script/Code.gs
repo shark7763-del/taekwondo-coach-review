@@ -19,7 +19,13 @@ var SHEETS = {
   scheduleView: '排班課表',
   lessonStatusView: '上課狀況',
   attendanceView: '出缺席紀錄',
-  kpiView: 'KPI復盤'
+  kpiView: 'KPI復盤',
+  courseRecords: '課程紀錄表',
+  studentRecords: '學生個別紀錄表',
+  coachRecords: '教練資料表',
+  classRecords: '班級資料表',
+  statsReport: '統計報表表',
+  parentReports: '家長回報紀錄表'
 };
 var SCHEDULE_HEADERS = ['id', 'weekday', 'classType', 'start', 'end', 'coach', 'content'];
 var STUDENT_HEADERS = ['id', 'name', 'classType', 'active'];
@@ -27,6 +33,12 @@ var FULLDB_HEADERS = ['key', 'updatedAt', 'json'];
 var SCHEDULE_VIEW_HEADERS = ['日期','星期','班別','開始','結束','主教練','助教1','助教2','助教3','上課內容','狀態','備註'];
 var LESSON_STATUS_HEADERS = ['日期','班別','開始','結束','人員','職務','上課狀態','已完成','遲到','代班','完成時間','課程狀態'];
 var ATTENDANCE_HEADERS = ['日期','星期','班別','開始','結束','人員','職務','出缺席','是否遲到','是否代班','課程狀態','備註'];
+var COURSE_RECORD_HEADERS = ['日期','班別','上課教練','助教','今日課程主題','學生人數','上課內容','整體表現','專注度','秩序','體能','技術完成度','總分','今日亮點','需要改善','下次課程建議','受傷或特殊狀況','家長回報'];
+var STUDENT_RECORD_HEADERS = ['日期','班別','教練','學生姓名','今日表現','技術問題','態度問題','專注問題','下次提醒事項','需要通知家長','教練備註'];
+var COACH_RECORD_HEADERS = ['教練','角色','啟用','本月上課堂數','本月復盤數','復盤完成率','平均課程評分','家長回報次數','館長備註','酬勞參考'];
+var CLASS_RECORD_HEADERS = ['班級','預設開始','預設結束','預設主教練','預設助教人數','本月復盤數','平均分數','備註'];
+var STATS_REPORT_HEADERS = ['項目','數值','說明'];
+var PARENT_REPORT_HEADERS = ['日期','班別','教練','是否已發送','LINE文字'];
 var KPI_VIEW_HEADERS = [
   '日期','教練','班別','學生人數','上課內容','總分','等級',
   '教學設計','技術示範','班級控場','學生互動','安全管理','課後延續','課程品質',
@@ -325,6 +337,12 @@ function syncReadableSheets_(db) {
   writeLessonStatusView_(db);
   writeAttendanceView_(db);
   writeKpiView_(db);
+  writeCourseRecords_(db);
+  writeStudentRecords_(db);
+  writeCoachRecords_(db);
+  writeClassRecords_(db);
+  writeStatsReport_(db);
+  writeParentReports_(db);
 }
 
 function scheduleEntries_(s) {
@@ -404,4 +422,96 @@ function writeKpiView_(db) {
     ];
   });
   writeRows_(SHEETS.kpiView, KPI_VIEW_HEADERS, rows);
+}
+
+function monthKey_() {
+  return Utilities.formatDate(new Date(), Session.getScriptTimeZone(), 'yyyy-MM');
+}
+
+function completedLessonsForCoach_(db, name, month) {
+  var count = 0;
+  (db.schedules || []).forEach(function (s) {
+    if ((s.date || '').slice(0, 7) !== month) return;
+    scheduleEntries_(s).forEach(function (e) {
+      if (e.person === name && e.completed) count++;
+    });
+  });
+  return count;
+}
+
+function writeCourseRecords_(db) {
+  var rows = (db.reviews || []).map(function (r) {
+    var q = r.quick || {};
+    return [
+      r.date || '', r.className || '', r.coach || '', r.assistant || '',
+      (r.topics || []).join('、'), r.count || '', r.content || '',
+      q.overall || '', q.focus || '', q.order || '', q.fitness || '', q.technique || '',
+      r.total || '', r.best || '', r.worst || '', r.courseNext || r.next || '', r.special || '', r.parentReport || ''
+    ];
+  });
+  writeRows_(SHEETS.courseRecords, COURSE_RECORD_HEADERS, rows);
+}
+
+function writeStudentRecords_(db) {
+  var rows = (db.studentRecords || []).map(function (r) {
+    return [
+      r.date || '', r.className || '', r.coach || '', r.studentName || '', r.performance || '',
+      r.techIssue || '', r.attitudeIssue || '', r.focusIssue || '', r.nextReminder || '',
+      r.notifyParent ? 'Y' : '', r.note || ''
+    ];
+  });
+  writeRows_(SHEETS.studentRecords, STUDENT_RECORD_HEADERS, rows);
+}
+
+function writeCoachRecords_(db) {
+  var month = monthKey_();
+  var rows = (db.people || []).map(function (p) {
+    var reviews = (db.reviews || []).filter(function (r) { return r.coach === p.name && (r.date || '').slice(0, 7) === month; });
+    var lessons = completedLessonsForCoach_(db, p.name, month);
+    var avg = reviews.length ? reviews.reduce(function (a, r) { return a + (Number(r.total) || 0); }, 0) / reviews.length : 0;
+    var rate = lessons ? Math.round(reviews.length / lessons * 100) : 0;
+    var parentCount = (db.parentReports || []).filter(function (r) { return r.coach === p.name && (r.date || '').slice(0, 7) === month; }).length;
+    return [
+      p.name || '', p.role || '', p.active !== false ? 'Y' : '',
+      lessons, reviews.length, rate + '%', avg ? avg.toFixed(1) : '',
+      parentCount, p.note || '', (rate >= 80 && avg >= 3.5) ? '可參考' : '暫不建議'
+    ];
+  });
+  writeRows_(SHEETS.coachRecords, COACH_RECORD_HEADERS, rows);
+}
+
+function writeClassRecords_(db) {
+  var month = monthKey_();
+  var rows = (db.classes || []).map(function (c) {
+    var reviews = (db.reviews || []).filter(function (r) { return r.className === c.name && (r.date || '').slice(0, 7) === month; });
+    var avg = reviews.length ? reviews.reduce(function (a, r) { return a + (Number(r.total) || 0); }, 0) / reviews.length : 0;
+    return [c.name || '', c.start || '', c.end || '', c.mainCoach || '', c.assistantCount || '', reviews.length, avg ? avg.toFixed(1) : '', c.note || ''];
+  });
+  writeRows_(SHEETS.classRecords, CLASS_RECORD_HEADERS, rows);
+}
+
+function writeStatsReport_(db) {
+  var today = Utilities.formatDate(new Date(), Session.getScriptTimeZone(), 'yyyy-MM-dd');
+  var month = monthKey_();
+  var reviews = db.reviews || [];
+  var todayReviews = reviews.filter(function (r) { return r.date === today; });
+  var monthReviews = reviews.filter(function (r) { return (r.date || '').slice(0, 7) === month; });
+  var avg = monthReviews.length ? monthReviews.reduce(function (a, r) { return a + (Number(r.total) || 0); }, 0) / monthReviews.length : 0;
+  var concern = (db.studentRecords || []).filter(function (r) { return r.performance === '需提醒' || r.notifyParent; }).length;
+  var parentCount = (db.parentReports || []).filter(function (r) { return (r.date || '').slice(0, 7) === month; }).length;
+  var rows = [
+    ['今日完成復盤堂數', todayReviews.length, today],
+    ['本月復盤堂數', monthReviews.length, month],
+    ['本月平均課程評分', avg ? avg.toFixed(1) : '', month],
+    ['學生需關注筆數', concern, '今日表現需提醒或需通知家長'],
+    ['家長回報紀錄數', parentCount, month]
+  ];
+  writeRows_(SHEETS.statsReport, STATS_REPORT_HEADERS, rows);
+}
+
+function writeParentReports_(db) {
+  var rows = (db.parentReports || []).map(function (r) {
+    return [r.date || '', r.className || '', r.coach || '', r.sent ? 'Y' : '', r.text || ''];
+  });
+  writeRows_(SHEETS.parentReports, PARENT_REPORT_HEADERS, rows);
 }
