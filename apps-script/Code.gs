@@ -57,10 +57,14 @@ var REVIEW_HEADERS = [
 
 /* ---------- Web App 入口 ---------- */
 function doGet() {
-  return HtmlService.createHtmlOutputFromFile('Index')
-    .setTitle('教練課後復盤系統')
+  return HtmlService.createTemplateFromFile('Index').evaluate()
+    .setTitle('雄麒道館｜教練課後復盤系統')
     .addMetaTag('viewport', 'width=device-width, initial-scale=1.0')
     .setXFrameOptionsMode(HtmlService.XFrameOptionsMode.ALLOWALL);
+}
+
+function include(filename) {
+  return HtmlService.createHtmlOutputFromFile(filename).getContent();
 }
 
 /* ---------- 試算表工具 ---------- */
@@ -532,4 +536,328 @@ function writeParentReports_(db) {
     return [r.date || '', r.className || '', r.coach || '', r.sent ? 'Y' : '', r.text || ''];
   });
   writeRows_(SHEETS.parentReports, PARENT_REPORT_HEADERS, rows);
+}
+
+/**********************************************************************
+ * 雄麒道館教學品質管理系統 v2
+ * 目標：表格化儲存課後復盤、學生個別紀錄、登入與館長統計。
+ * 舊版 FullDB / 排班 / 月班表函式保留，避免破壞既有資料。
+ **********************************************************************/
+
+var Q_SHEETS = {
+  reviews: '課後復盤紀錄',
+  studentLogs: '學生個別紀錄',
+  students: '學生名單',
+  coaches: '教練名單',
+  classes: '班別設定',
+  settings: '系統設定'
+};
+
+var Q_REVIEW_HEADERS = [
+  '紀錄ID','建立時間','日期','班別','教練姓名','助教姓名','今日課程主題','今日訓練內容',
+  '整體表現分數','專注度','紀律','體能狀況','技術完成度','表現優秀學生','需要提醒學生',
+  '今日主要問題','下次加強重點','教練備註','LINE公告文字'
+];
+var Q_STUDENT_LOG_HEADERS = [
+  '紀錄ID','課後復盤ID','建立時間','日期','班別','學生姓名','今日表現','主要問題',
+  '教練建議','是否通知家長','家長回饋文字'
+];
+var Q_STUDENT_HEADERS = ['學生姓名','班別','家長姓名','家長 LINE 備註','狀態'];
+var Q_COACH_HEADERS = ['教練姓名','帳號','密碼','角色','狀態'];
+var Q_CLASS_HEADERS = ['班別','狀態','備註'];
+var Q_SETTING_HEADERS = ['設定項目','設定值'];
+
+var Q_DEFAULT_CLASSES = ['幼幼班','暑期班','健身班','選手班','品勢班','週六班','黑帶培訓班'];
+var Q_DEFAULT_COACHES = [
+  ['館長','admin','7763','館長','啟用'],
+  ['主教練','coach','1234','主教練','啟用'],
+  ['助教','assistant','1234','助教','啟用']
+];
+
+function qSheet_(name, headers) {
+  var sh = sheet_(name, headers);
+  if (headers && sh.getLastRow() === 1) sh.setFrozenRows(1);
+  return sh;
+}
+
+function qSetupSheetsSrv() {
+  qSheet_(Q_SHEETS.reviews, Q_REVIEW_HEADERS);
+  qSheet_(Q_SHEETS.studentLogs, Q_STUDENT_LOG_HEADERS);
+  var students = qSheet_(Q_SHEETS.students, Q_STUDENT_HEADERS);
+  var coaches = qSheet_(Q_SHEETS.coaches, Q_COACH_HEADERS);
+  var classes = qSheet_(Q_SHEETS.classes, Q_CLASS_HEADERS);
+  var settings = qSheet_(Q_SHEETS.settings, Q_SETTING_HEADERS);
+
+  if (classes.getLastRow() < 2) {
+    classes.getRange(2, 1, Q_DEFAULT_CLASSES.length, 3).setValues(Q_DEFAULT_CLASSES.map(function (c) { return [c, '啟用', '']; }));
+  }
+  if (coaches.getLastRow() < 2) {
+    coaches.getRange(2, 1, Q_DEFAULT_COACHES.length, Q_COACH_HEADERS.length).setValues(Q_DEFAULT_COACHES);
+  }
+  if (students.getLastRow() < 2) {
+    var demo = [
+      ['學生A','幼幼班','','','正常'],
+      ['學生B','健身班','','','正常'],
+      ['學生C','選手班','','','正常']
+    ];
+    students.getRange(2, 1, demo.length, Q_STUDENT_HEADERS.length).setValues(demo);
+  }
+  if (settings.getLastRow() < 2) {
+    settings.getRange(2, 1, 2, 2).setValues([
+      ['系統名稱','雄麒道館｜教練課後復盤系統'],
+      ['道館名稱','雄麒道館']
+    ]);
+  }
+  return { ok: true };
+}
+
+function qRows_(sheetName, headers) {
+  var sh = qSheet_(sheetName, headers);
+  var last = sh.getLastRow();
+  if (last < 2) return [];
+  var values = sh.getRange(2, 1, last - 1, headers.length).getValues();
+  return values.filter(function (r) { return r.some(function (v) { return v !== '' && v != null; }); }).map(function (r) {
+    var o = {};
+    headers.forEach(function (h, i) {
+      o[h] = r[i] instanceof Date ? Utilities.formatDate(r[i], Session.getScriptTimeZone(), 'yyyy-MM-dd') : r[i];
+    });
+    return o;
+  });
+}
+
+function qAppend_(sheetName, headers, rows) {
+  var sh = qSheet_(sheetName, headers);
+  if (!rows.length) return;
+  sh.getRange(sh.getLastRow() + 1, 1, rows.length, headers.length).setValues(rows);
+}
+
+function qId_(prefix) {
+  return prefix + '-' + Utilities.formatDate(new Date(), Session.getScriptTimeZone(), 'yyyyMMddHHmmss') + '-' + Math.random().toString(36).slice(2, 7);
+}
+
+function qJson_(value) {
+  if (value == null) return [];
+  if (Array.isArray(value)) return value;
+  if (typeof value === 'string') {
+    try { var parsed = JSON.parse(value); return Array.isArray(parsed) ? parsed : []; } catch (e) { return []; }
+  }
+  return [];
+}
+
+function qLoginSrv(account, password) {
+  qSetupSheetsSrv();
+  account = String(account || '').trim();
+  password = String(password || '').trim();
+  var coaches = qRows_(Q_SHEETS.coaches, Q_COACH_HEADERS);
+  var found = coaches.find(function (c) {
+    return String(c['帳號'] || '').trim() === account &&
+      String(c['密碼'] || '').trim() === password &&
+      String(c['狀態'] || '') !== '停用';
+  });
+  if (!found) throw new Error('帳號、密碼錯誤，或帳號已停用');
+  return {
+    name: String(found['教練姓名'] || ''),
+    account: account,
+    role: String(found['角色'] || '助教')
+  };
+}
+
+function qBootstrapSrv(userJson) {
+  qSetupSheetsSrv();
+  var user = typeof userJson === 'string' ? JSON.parse(userJson || '{}') : (userJson || {});
+  var classes = qRows_(Q_SHEETS.classes, Q_CLASS_HEADERS).filter(function (c) { return String(c['狀態'] || '啟用') !== '停用'; });
+  var students = qRows_(Q_SHEETS.students, Q_STUDENT_HEADERS).filter(function (s) { return String(s['狀態'] || '正常') === '正常'; });
+  var coaches = qRows_(Q_SHEETS.coaches, Q_COACH_HEADERS).filter(function (c) { return String(c['狀態'] || '啟用') !== '停用'; });
+  var reviews = qFilteredReviews_(user);
+  return {
+    classes: classes.map(function (c) { return String(c['班別'] || ''); }).filter(String),
+    students: students.map(function (s) {
+      return { name: String(s['學生姓名'] || ''), className: String(s['班別'] || ''), parent: String(s['家長姓名'] || ''), lineNote: String(s['家長 LINE 備註'] || '') };
+    }),
+    coaches: coaches.map(function (c) { return { name: String(c['教練姓名'] || ''), role: String(c['角色'] || '') }; }),
+    reviews: reviews.slice(-50).reverse(),
+    dashboard: qDashboardData_(user)
+  };
+}
+
+function qCanSeeAll_(user) {
+  return user && String(user.role || '') === '館長';
+}
+
+function qFilteredReviews_(user) {
+  var rows = qRows_(Q_SHEETS.reviews, Q_REVIEW_HEADERS);
+  if (qCanSeeAll_(user)) return rows;
+  var name = String(user && user.name || '');
+  return rows.filter(function (r) { return String(r['教練姓名'] || '') === name; });
+}
+
+function qSaveReviewSrv(payloadJson) {
+  qSetupSheetsSrv();
+  var p = typeof payloadJson === 'string' ? JSON.parse(payloadJson || '{}') : (payloadJson || {});
+  var user = p.user || {};
+  var review = p.review || {};
+  var studentLogs = p.studentLogs || [];
+  if (!review.date || !review.className || !review.coachName) throw new Error('請確認日期、班別、教練姓名已填寫');
+
+  var now = new Date();
+  var reviewId = qId_('REV');
+  var lineText = qGroupAnnouncement_(review);
+  var row = [
+    reviewId, now, review.date, review.className, review.coachName, review.assistantName || '',
+    qJson_(review.topics).join('、'), review.content || '',
+    Number(review.overall || 0), Number(review.focus || 0), Number(review.discipline || 0), Number(review.fitness || 0), Number(review.technique || 0),
+    review.goodStudents || '', review.remindStudents || '',
+    qJson_(review.problems).join('、'), qJson_(review.nextFocus).join('、'), review.note || '', lineText
+  ];
+  qAppend_(Q_SHEETS.reviews, Q_REVIEW_HEADERS, [row]);
+
+  var studentRows = studentLogs.filter(function (s) { return s && s.studentName; }).map(function (s) {
+    var feedback = qParentFeedback_(s, review);
+    return [
+      qId_('STU'), reviewId, now, review.date, review.className, s.studentName,
+      s.performance || '穩定', s.issue || '', s.advice || '', s.notifyParent ? '是' : '否', feedback
+    ];
+  });
+  qAppend_(Q_SHEETS.studentLogs, Q_STUDENT_LOG_HEADERS, studentRows);
+  return { ok: true, reviewId: reviewId, lineText: lineText, studentCount: studentRows.length };
+}
+
+function qParentFeedback_(student, review) {
+  var name = student.studentName || '孩子';
+  var issue = student.issue || '基本動作穩定度';
+  var advice = student.advice || (qJson_(review.nextFocus)[0] || '穩定練習');
+  var strong = student.performance === '優秀' ? '今天表現很亮眼' : student.performance === '需提醒' ? '今天有一些需要教練協助調整的地方' : '今天表現穩定';
+  return '【雄麒道館課後回饋】\n' +
+    name + strong + '，教練有看到孩子在課堂中的投入。\n' +
+    '目前比較需要加強的是「' + issue + '」，教練下次會協助孩子針對「' + advice + '」做調整。\n' +
+    '也請家長在家多鼓勵孩子，保持穩定練習，相信孩子會越來越好。';
+}
+
+function qGroupAnnouncement_(review) {
+  var topics = qJson_(review.topics);
+  var problems = qJson_(review.problems);
+  var nextFocus = qJson_(review.nextFocus);
+  var lines = [
+    '【雄麒道館課後紀錄】',
+    '班別：' + (review.className || ''),
+    '日期：' + String(review.date || '').replace(/-/g, '/'),
+    '',
+    '今日訓練重點：'
+  ];
+  (topics.length ? topics : ['今日課程訓練']).slice(0, 5).forEach(function (t, i) { lines.push((i + 1) + '. ' + t); });
+  lines.push('');
+  lines.push('今日整體表現：' + (review.overall || '-') + ' / 5');
+  lines.push('');
+  lines.push('教練提醒：');
+  lines.push('今天整體訓練狀況' + (Number(review.overall || 0) >= 4 ? '不錯' : '仍有進步空間') + '，' +
+    (problems.length ? '比較需要留意「' + problems.join('、') + '」。' : '課堂節奏大致穩定。') +
+    (nextFocus.length ? '下次課程會持續針對「' + nextFocus.join('、') + '」做調整。' : '下次課程會持續觀察孩子狀況。'));
+  lines.push('');
+  lines.push('感謝家長支持，孩子的進步需要道館、孩子與家庭一起配合。');
+  return lines.join('\n');
+}
+
+function qDashboardSrv(userJson) {
+  qSetupSheetsSrv();
+  var user = typeof userJson === 'string' ? JSON.parse(userJson || '{}') : (userJson || {});
+  if (!qCanSeeAll_(user)) throw new Error('此功能限館長使用');
+  return qDashboardData_(user);
+}
+
+function qDashboardData_(user) {
+  if (!qCanSeeAll_(user)) return {};
+  var reviews = qRows_(Q_SHEETS.reviews, Q_REVIEW_HEADERS);
+  var logs = qRows_(Q_SHEETS.studentLogs, Q_STUDENT_LOG_HEADERS);
+  var today = Utilities.formatDate(new Date(), Session.getScriptTimeZone(), 'yyyy-MM-dd');
+  var now = new Date();
+  var weekStart = new Date(now); weekStart.setDate(now.getDate() - ((now.getDay() + 6) % 7)); weekStart.setHours(0,0,0,0);
+  var monthKey = Utilities.formatDate(now, Session.getScriptTimeZone(), 'yyyy-MM');
+  var todayReviews = reviews.filter(function (r) { return qDateKey_(r['日期']) === today; });
+  var weekReviews = reviews.filter(function (r) { return qDate_(r['日期']) >= weekStart; });
+  var monthReviews = reviews.filter(function (r) { return qDateKey_(r['日期']).slice(0, 7) === monthKey; });
+
+  return {
+    todayReviews: todayReviews.reverse(),
+    weekByClass: qCountBy_(weekReviews, '班別'),
+    monthByCoach: qCountBy_(monthReviews, '教練姓名'),
+    avgByClass: qAverageBy_(monthReviews, '班別', '整體表現分數'),
+    issueRank: qRankText_(monthReviews, '今日主要問題'),
+    concernStudents: logs.filter(function (l) {
+      return String(l['今日表現']) === '需提醒' || String(l['是否通知家長']) === '是';
+    }).slice(-20).reverse(),
+    missingReviews: qMissingReviews_(reviews),
+    totals: {
+      today: todayReviews.length,
+      week: weekReviews.length,
+      month: monthReviews.length,
+      concern: logs.filter(function (l) { return String(l['是否通知家長']) === '是'; }).length
+    }
+  };
+}
+
+function qDate_(v) {
+  if (v instanceof Date) return new Date(v.getFullYear(), v.getMonth(), v.getDate());
+  return new Date(String(v || '') + 'T00:00:00');
+}
+function qDateKey_(v) {
+  if (v instanceof Date) return Utilities.formatDate(v, Session.getScriptTimeZone(), 'yyyy-MM-dd');
+  return String(v || '').slice(0, 10);
+}
+function qCountBy_(rows, key) {
+  var m = {};
+  rows.forEach(function (r) { var k = String(r[key] || '未分類'); m[k] = (m[k] || 0) + 1; });
+  return Object.keys(m).sort().map(function (k) { return { label: k, value: m[k] }; });
+}
+function qAverageBy_(rows, key, valueKey) {
+  var m = {};
+  rows.forEach(function (r) {
+    var k = String(r[key] || '未分類');
+    if (!m[k]) m[k] = { sum: 0, count: 0 };
+    m[k].sum += Number(r[valueKey] || 0); m[k].count++;
+  });
+  return Object.keys(m).sort().map(function (k) { return { label: k, value: m[k].count ? (m[k].sum / m[k].count).toFixed(1) : '0.0' }; });
+}
+function qRankText_(rows, key) {
+  var m = {};
+  rows.forEach(function (r) {
+    String(r[key] || '').split('、').filter(String).forEach(function (x) { m[x] = (m[x] || 0) + 1; });
+  });
+  return Object.keys(m).sort(function (a, b) { return m[b] - m[a]; }).slice(0, 10).map(function (k) { return { label: k, value: m[k] }; });
+}
+function qMissingReviews_(reviews) {
+  var schedule = qGetLegacySchedules_();
+  if (!schedule.length) return [];
+  var done = {};
+  reviews.forEach(function (r) { done[qDateKey_(r['日期']) + '|' + r['班別'] + '|' + r['教練姓名']] = true; });
+  var today = Utilities.formatDate(new Date(), Session.getScriptTimeZone(), 'yyyy-MM-dd');
+  return schedule.filter(function (s) {
+    if (!s.date || s.date > today || s.status === '取消') return false;
+    return !done[s.date + '|' + s.className + '|' + s.mainCoach];
+  }).slice(-30).reverse();
+}
+function qGetLegacySchedules_() {
+  try {
+    var raw = JSON.parse(getFullDbSrv());
+    return raw.db && raw.db.schedules ? raw.db.schedules : [];
+  } catch (e) {
+    return [];
+  }
+}
+
+function qDeleteReviewSrv(userJson, reviewId) {
+  var user = typeof userJson === 'string' ? JSON.parse(userJson || '{}') : (userJson || {});
+  if (!qCanSeeAll_(user)) throw new Error('只有館長可以刪除紀錄');
+  qDeleteById_(Q_SHEETS.reviews, Q_REVIEW_HEADERS, '紀錄ID', reviewId);
+  qDeleteById_(Q_SHEETS.studentLogs, Q_STUDENT_LOG_HEADERS, '課後復盤ID', reviewId);
+  return { ok: true };
+}
+
+function qDeleteById_(sheetName, headers, key, id) {
+  var sh = qSheet_(sheetName, headers);
+  var col = headers.indexOf(key) + 1;
+  if (!col || sh.getLastRow() < 2) return;
+  var vals = sh.getRange(2, col, sh.getLastRow() - 1, 1).getValues();
+  for (var i = vals.length - 1; i >= 0; i--) {
+    if (String(vals[i][0]) === String(id)) sh.deleteRow(i + 2);
+  }
 }

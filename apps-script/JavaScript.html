@@ -1,0 +1,309 @@
+<script>
+const $ = s => document.querySelector(s);
+const esc = s => String(s == null ? '' : s).replace(/[&<>"]/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
+const todayStr = () => {
+  const d = new Date();
+  return d.getFullYear() + '-' + String(d.getMonth()+1).padStart(2,'0') + '-' + String(d.getDate()).padStart(2,'0');
+};
+
+const TOPICS = ['基本動作','體能訓練','橫踢','下壓','旋踢','品勢','對練','反應訓練','黑帶檢定準備','比賽調整'];
+const PROBLEMS = ['專注力不足','體能下降','動作不確實','紀律鬆散','缺乏自信','反應太慢','攻擊慾望不足','品勢節奏不穩','基本功不足','整體表現良好'];
+const NEXTS = ['基本動作穩定度','踢擊速度','踢擊高度','轉髖','防守反應','距離控制','品勢節奏','核心穩定','體能耐力','上課紀律'];
+const PERFS = ['優秀','穩定','普通','需提醒'];
+
+let USER = null;
+let DATA = { classes: [], students: [], coaches: [], reviews: [], dashboard: {} };
+let studentRows = [];
+let generatedLine = '';
+
+function toast(msg){
+  const t = $('#toast');
+  t.textContent = msg;
+  t.classList.add('show');
+  clearTimeout(t._timer);
+  t._timer = setTimeout(() => t.classList.remove('show'), 2200);
+}
+function gas(fn, ...args){
+  return new Promise((resolve, reject) => {
+    google.script.run.withSuccessHandler(resolve).withFailureHandler(err => reject(err))[fn](...args);
+  });
+}
+function showLoading(msg){ toast(msg || '處理中...'); }
+function saveUser(){ localStorage.setItem('hc_quality_user', JSON.stringify(USER)); }
+function loadUser(){ try { USER = JSON.parse(localStorage.getItem('hc_quality_user') || 'null'); } catch(e){ USER = null; } }
+
+async function setupSheets(){
+  showLoading('正在建立分頁');
+  try { await gas('qSetupSheetsSrv'); toast('Google Sheets 分頁已準備好'); }
+  catch(e){ toast(e.message || '初始化失敗'); }
+}
+async function login(){
+  const account = $('#loginAccount').value.trim();
+  const password = $('#loginPassword').value.trim();
+  if(!account || !password){ toast('請輸入帳號與密碼'); return; }
+  showLoading('登入中');
+  try{
+    USER = await gas('qLoginSrv', account, password);
+    saveUser();
+    await boot();
+  }catch(e){ toast(e.message || '登入失敗'); }
+}
+function logout(){
+  USER = null;
+  localStorage.removeItem('hc_quality_user');
+  $('#appView').classList.add('hidden');
+  $('#loginView').classList.remove('hidden');
+}
+async function boot(){
+  if(!USER) return;
+  $('#loginView').classList.add('hidden');
+  $('#appView').classList.remove('hidden');
+  $('#userBadge').textContent = `${USER.name}｜${USER.role}`;
+  renderTabs();
+  showLoading('載入資料');
+  try{
+    DATA = await gas('qBootstrapSrv', JSON.stringify(USER));
+    switchTab('review');
+  }catch(e){ toast(e.message || '資料載入失敗'); }
+}
+function renderTabs(){
+  const tabs = [
+    { id:'review', label:'課後復盤' },
+    { id:'records', label:'我的紀錄' }
+  ];
+  if(USER.role === '館長') tabs.push({ id:'dashboard', label:'館長後台' });
+  $('#tabs').innerHTML = tabs.map(t => `<button class="tab-btn" data-tab="${t.id}" onclick="switchTab('${t.id}')">${t.label}</button>`).join('');
+}
+function switchTab(id){
+  document.querySelectorAll('.tab-btn').forEach(b => b.classList.toggle('active', b.dataset.tab === id));
+  document.querySelectorAll('.tab-panel').forEach(p => p.classList.remove('active'));
+  const panel = $('#' + id + 'Tab');
+  if(panel) panel.classList.add('active');
+  if(id === 'review') renderReview();
+  if(id === 'records') renderRecords();
+  if(id === 'dashboard') renderDashboard();
+  window.scrollTo(0,0);
+}
+
+function chipGroup(id, list){
+  return `<div class="chips" id="${id}">${list.map(x => `<span class="chip" onclick="toggleChip(this)">${esc(x)}</span>`).join('')}</div>`;
+}
+function toggleChip(el){ el.classList.toggle('active'); refreshPreview(); }
+function chipValues(id){ return [...document.querySelectorAll('#' + id + ' .chip.active')].map(x => x.textContent.trim()); }
+function stars(id, label){
+  return `<div class="field"><label>${label}</label><div class="stars" id="${id}">${[1,2,3,4,5].map(n => `<span class="star ${n===4?'active':''}" onclick="setStar('${id}',${n})">${n}</span>`).join('')}</div></div>`;
+}
+function setStar(id, n){
+  [...document.querySelectorAll('#' + id + ' .star')].forEach((el, i) => el.classList.toggle('active', i < n));
+  refreshPreview();
+}
+function starValue(id){ return document.querySelectorAll('#' + id + ' .star.active').length || 0; }
+
+function renderReview(){
+  studentRows = [];
+  const coachOpts = DATA.coaches.map(c => `<option ${c.name === USER.name ? 'selected' : ''}>${esc(c.name)}</option>`).join('');
+  $('#reviewTab').innerHTML = `
+    <div class="card">
+      <div class="card-head"><div><div class="card-title">課後快速復盤</div><div class="sub">下課後 30 秒內完成，先用快速選項，必要時再補文字。</div></div></div>
+      <div class="grid">
+        <div class="field"><label>日期</label><input id="rvDate" type="date" value="${todayStr()}"></div>
+        <div class="field"><label>班別</label><select id="rvClass" onchange="renderStudentPicker()">${DATA.classes.map(c => `<option>${esc(c)}</option>`).join('')}</select></div>
+        <div class="field"><label>教練姓名</label><select id="rvCoach">${coachOpts}</select></div>
+        <div class="field"><label>助教姓名</label><select id="rvAssistant"><option value="">無</option>${coachOpts}</select></div>
+      </div>
+      <div class="field"><label>今日課程主題</label>${chipGroup('topicChips', TOPICS)}</div>
+      <div class="field"><label>今日訓練內容</label><textarea id="rvContent" placeholder="例：橫踢速度、距離控制、反應訓練"></textarea></div>
+      <div class="grid">
+        ${stars('scoreOverall','今日整體表現')}
+        ${stars('scoreFocus','學生專注度')}
+        ${stars('scoreDiscipline','學生紀律')}
+        ${stars('scoreFitness','學生體能狀況')}
+        ${stars('scoreTechnique','技術完成度')}
+      </div>
+      <div class="grid">
+        <div class="field"><label>今日表現優秀學生</label><input id="rvGood" placeholder="可輸入多位學生"></div>
+        <div class="field"><label>今日需要提醒學生</label><input id="rvRemind" placeholder="可輸入多位學生"></div>
+      </div>
+      <div class="field"><label>今日主要問題</label>${chipGroup('problemChips', PROBLEMS)}</div>
+      <div class="field"><label>下次課程加強重點</label>${chipGroup('nextChips', NEXTS)}</div>
+      <div class="field"><label>教練備註</label><textarea id="rvNote" placeholder="補充安全狀況、學生反應、下次備課提醒"></textarea></div>
+    </div>
+
+    <div class="card">
+      <div class="card-head">
+        <div><div class="card-title">學生個別紀錄</div><div class="sub">只記錄需要被看見或追蹤的學生，不必每位都填。</div></div>
+        <button class="btn gold small" onclick="addStudentRow()">新增學生</button>
+      </div>
+      <div id="studentRows"></div>
+    </div>
+
+    <div class="card">
+      <div class="card-head"><div class="card-title">LINE 班級群組公告</div><button class="btn ghost small" onclick="copyText(generatedLine)">複製</button></div>
+      <div id="linePreview" class="result"></div>
+    </div>
+
+    <button class="btn green wide" onclick="submitReview()">送出課後復盤</button>
+  `;
+  renderStudentPicker();
+  refreshPreview();
+}
+function renderStudentPicker(){ renderStudentRows(); }
+function studentsForClass(){
+  const cls = $('#rvClass') ? $('#rvClass').value : '';
+  return DATA.students.filter(s => !cls || s.className === cls);
+}
+function addStudentRow(){
+  studentRows.push({ id: Date.now() + Math.random(), studentName:'', performance:'穩定', issue:'', advice:'', notifyParent:false });
+  renderStudentRows();
+}
+function removeStudentRow(id){
+  studentRows = studentRows.filter(r => String(r.id) !== String(id));
+  renderStudentRows();
+}
+function renderStudentRows(){
+  const el = $('#studentRows'); if(!el) return;
+  const opts = studentsForClass().map(s => `<option>${esc(s.name)}</option>`).join('');
+  el.innerHTML = studentRows.length ? studentRows.map((r, idx) => `
+    <div class="student-row">
+      <div class="card-head"><div class="card-title">學生 ${idx + 1}</div><button class="btn ghost small" onclick="removeStudentRow('${r.id}')">移除</button></div>
+      <div class="grid">
+        <div class="field"><label>學生姓名</label><select onchange="studentRows[${idx}].studentName=this.value; refreshPreview()"><option value="">請選擇</option>${studentsForClass().map(s => `<option ${s.name===r.studentName?'selected':''}>${esc(s.name)}</option>`).join('')}</select></div>
+        <div class="field"><label>今日表現</label><select onchange="studentRows[${idx}].performance=this.value; refreshPreview()">${PERFS.map(p => `<option ${p===r.performance?'selected':''}>${p}</option>`).join('')}</select></div>
+      </div>
+      <div class="field"><label>主要問題</label><input value="${esc(r.issue)}" placeholder="例：專注力不足 / 距離控制" oninput="studentRows[${idx}].issue=this.value; refreshPreview()"></div>
+      <div class="field"><label>教練給他的建議</label><input value="${esc(r.advice)}" placeholder="例：下次加強轉髖與防守反應" oninput="studentRows[${idx}].advice=this.value; refreshPreview()"></div>
+      <label class="chip ${r.notifyParent?'active':''}" onclick="studentRows[${idx}].notifyParent=!studentRows[${idx}].notifyParent; renderStudentRows(); refreshPreview()">需要通知家長</label>
+    </div>`).join('') : '<div class="sub">尚未新增學生個別紀錄。</div>';
+}
+function reviewPayload(){
+  return {
+    date: $('#rvDate').value,
+    className: $('#rvClass').value,
+    coachName: $('#rvCoach').value,
+    assistantName: $('#rvAssistant').value,
+    topics: chipValues('topicChips'),
+    content: $('#rvContent').value.trim(),
+    overall: starValue('scoreOverall'),
+    focus: starValue('scoreFocus'),
+    discipline: starValue('scoreDiscipline'),
+    fitness: starValue('scoreFitness'),
+    technique: starValue('scoreTechnique'),
+    goodStudents: $('#rvGood').value.trim(),
+    remindStudents: $('#rvRemind').value.trim(),
+    problems: chipValues('problemChips'),
+    nextFocus: chipValues('nextChips'),
+    note: $('#rvNote').value.trim()
+  };
+}
+function makeLineText(r){
+  const topics = r.topics.length ? r.topics : ['今日課程訓練'];
+  const problems = r.problems.length ? r.problems.join('、') : '課堂狀況穩定';
+  const nexts = r.nextFocus.length ? r.nextFocus.join('、') : '持續穩定練習';
+  return `【雄麒道館課後紀錄】
+班別：${r.className}
+日期：${r.date.replaceAll('-', '/')}
+
+今日訓練重點：
+${topics.slice(0,5).map((t,i)=>`${i+1}. ${t}`).join('\n')}
+
+今日整體表現：${r.overall} / 5
+
+教練提醒：
+今天整體訓練狀況${r.overall >= 4 ? '不錯' : '仍有進步空間'}，比較需要留意「${problems}」。下次課程會持續針對「${nexts}」做調整。
+
+感謝家長支持，孩子的進步需要道館、孩子與家庭一起配合。`;
+}
+function refreshPreview(){
+  if(!$('#linePreview')) return;
+  generatedLine = makeLineText(reviewPayload());
+  $('#linePreview').textContent = generatedLine;
+}
+async function submitReview(){
+  const review = reviewPayload();
+  if(!review.date || !review.className || !review.coachName){ toast('請確認日期、班別、教練姓名'); return; }
+  if(!review.topics.length){ toast('請至少選一個課程主題'); return; }
+  showLoading('送出中');
+  try{
+    const res = await gas('qSaveReviewSrv', JSON.stringify({ user: USER, review, studentLogs: studentRows }));
+    toast(`已送出復盤，學生紀錄 ${res.studentCount} 筆`);
+    DATA = await gas('qBootstrapSrv', JSON.stringify(USER));
+    generatedLine = res.lineText;
+    openModal('已產生 LINE 公告', `<div class="result">${esc(res.lineText)}</div><button class="btn gold wide" onclick="copyText(generatedLine)">複製公告</button>`);
+    renderReview();
+  }catch(e){ toast(e.message || '送出失敗'); }
+}
+
+function renderRecords(){
+  const rows = DATA.reviews || [];
+  $('#recordsTab').innerHTML = `
+    <div class="card"><div class="card-title">${USER.role === '館長' ? '最近復盤紀錄' : '我填寫的復盤紀錄'}</div><div class="sub">顯示最近 50 筆。</div></div>
+    <div class="list">${rows.length ? rows.map(r => `
+      <div class="item">
+        <div class="item-title">${esc(r['日期'])}｜${esc(r['班別'])}<span class="pill gold">${esc(r['整體表現分數'])}/5</span></div>
+        <div class="item-meta">教練：${esc(r['教練姓名'])}｜主題：${esc(r['今日課程主題']) || '—'}<br>問題：${esc(r['今日主要問題']) || '—'}</div>
+        <div class="btn-row" style="margin-top:10px">
+          <button class="btn ghost small" onclick="copyRecordLine('${esc(r['紀錄ID'])}')">複製公告</button>
+          ${USER.role === '館長' ? `<button class="btn red small" onclick="deleteReview('${esc(r['紀錄ID'])}')">刪除</button>` : ''}
+        </div>
+      </div>`).join('') : '<div class="empty card">尚無紀錄</div>'}</div>`;
+}
+function copyRecordLine(id){
+  const r = (DATA.reviews || []).find(x => String(x['紀錄ID']) === String(id));
+  copyText(r ? r['LINE公告文字'] : '');
+}
+async function deleteReview(id){
+  if(!confirm('確定刪除此筆復盤與學生紀錄？')) return;
+  try{
+    await gas('qDeleteReviewSrv', JSON.stringify(USER), id);
+    DATA = await gas('qBootstrapSrv', JSON.stringify(USER));
+    toast('已刪除');
+    renderRecords();
+  }catch(e){ toast(e.message || '刪除失敗'); }
+}
+
+function metricList(rows, unit){
+  return rows && rows.length ? rows.map(x => `<div class="item"><div class="item-title">${esc(x.label)}</div><div class="item-meta">${esc(x.value)}${unit || ''}</div></div>`).join('') : '<div class="sub">目前沒有資料</div>';
+}
+function renderDashboard(){
+  const d = DATA.dashboard || {};
+  $('#dashboardTab').innerHTML = `
+    <div class="grid3">
+      <div class="stat"><div class="num">${d.totals?.today || 0}</div><div class="cap">今日復盤</div></div>
+      <div class="stat"><div class="num">${d.totals?.week || 0}</div><div class="cap">本週復盤</div></div>
+      <div class="stat"><div class="num">${d.totals?.month || 0}</div><div class="cap">本月復盤</div></div>
+    </div>
+    <div class="card"><div class="card-title">今日課後復盤紀錄</div><div class="list">${(d.todayReviews||[]).length ? d.todayReviews.map(r=>`<div class="item"><div class="item-title">${esc(r['班別'])}｜${esc(r['教練姓名'])}</div><div class="item-meta">${esc(r['今日課程主題'])}</div></div>`).join('') : '<div class="sub">今日尚無紀錄</div>'}</div></div>
+    <div class="grid">
+      <div class="card"><div class="card-title">本週各班復盤</div>${metricList(d.weekByClass,' 筆')}</div>
+      <div class="card"><div class="card-title">本月各教練填寫次數</div>${metricList(d.monthByCoach,' 筆')}</div>
+      <div class="card"><div class="card-title">各班平均表現分數</div>${metricList(d.avgByClass,' / 5')}</div>
+      <div class="card"><div class="card-title">常見問題排行</div>${metricList(d.issueRank,' 次')}</div>
+    </div>
+    <div class="card"><div class="card-title">需要特別追蹤學生</div><div class="list">${(d.concernStudents||[]).length ? d.concernStudents.map(s=>`<div class="item"><div class="item-title">${esc(s['學生姓名'])}｜${esc(s['今日表現'])}</div><div class="item-meta">${esc(s['日期'])}｜${esc(s['班別'])}｜${esc(s['主要問題'])}</div></div>`).join('') : '<div class="sub">目前沒有需追蹤學生</div>'}</div></div>
+    <div class="card"><div class="card-title">未填寫復盤提醒</div><div class="list">${(d.missingReviews||[]).length ? d.missingReviews.map(s=>`<div class="item"><div class="item-title">${esc(s.date)}｜${esc(s.className)}</div><div class="item-meta">教練：${esc(s.mainCoach || '—')}｜${esc(s.start || '')}-${esc(s.end || '')}</div></div>`).join('') : '<div class="sub">目前沒有缺漏，或尚未建立排班資料。</div>'}</div></div>
+  `;
+}
+
+async function copyText(text){
+  if(!text){ toast('沒有可複製的文字'); return; }
+  try{
+    await navigator.clipboard.writeText(text);
+    toast('已複製，可貼到 LINE');
+  }catch(e){
+    const ta = document.createElement('textarea');
+    ta.value = text; document.body.appendChild(ta); ta.select(); document.execCommand('copy'); ta.remove();
+    toast('已複製');
+  }
+}
+function openModal(title, body){
+  $('#modalTitle').textContent = title;
+  $('#modalBody').innerHTML = body;
+  $('#modal').classList.remove('hidden');
+}
+function closeModal(){ $('#modal').classList.add('hidden'); }
+
+window.addEventListener('load', async () => {
+  loadUser();
+  if(USER) await boot();
+});
+</script>
