@@ -45,6 +45,9 @@ body{ background:
 .back-link{ display:inline-block; margin-top:16px; font-size:12px; color:var(--text-dim); cursor:pointer; }
 .name-grid{ display:grid; grid-template-columns:1fr 1fr; gap:10px; margin-top:6px; }
 .name-grid .span2{ grid-column:1 / -1; }
+.name-role-title{ grid-column:1 / -1; text-align:left; font-size:12px; color:var(--accent); font-weight:900;
+  letter-spacing:2px; margin:10px 2px 0; padding-top:6px; border-top:1px solid rgba(212,175,55,.18); }
+.name-role-title:first-child{ margin-top:0; padding-top:0; border-top:0; }
 .name-pick{ padding:16px 10px; border:1px solid var(--border); border-radius:13px; background:var(--bg-card-2);
   font-size:15px; font-weight:700; cursor:pointer; transition:.12s; }
 .name-pick:active{ transform:scale(.97); border-color:var(--accent); }
@@ -492,10 +495,18 @@ function renderHomePreview(){
 }
 function openCoachPick(){
   $('#homeScreen').style.display='none';
-  const coachRank=role=>({'館長':0,'主教練':0,'次教練':1,'助教':2})[role]??3;
-  $('#coachPickGrid').innerHTML = [...activePeople()].sort((a,b)=>coachRank(a.role)-coachRank(b.role)).map(p=>
-    `<div class="name-pick${coachRank(p.role)===0?' span2':''}" onclick="enterCoach('${esc(p.name)}')">${esc(p.name)}<small>${esc(p.role)}</small></div>`).join('')
-    || '<div class="empty">尚無啟用人員，請館長先建立名單</div>';
+  const groups=[
+    ['主教練', p=>p.role==='館長'||p.role==='主教練', true],
+    ['次教練', p=>p.role==='次教練', false],
+    ['助教', p=>p.role==='助教', false],
+    ['其他人員', p=>!['館長','主教練','次教練','助教'].includes(p.role), false]
+  ];
+  $('#coachPickGrid').innerHTML = groups.map(([label,filter,span])=>{
+    const people=activePeople().filter(filter);
+    if(!people.length) return '';
+    return `<div class="name-role-title">${label}</div>`+people.map(p=>
+      `<div class="name-pick${span?' span2':''}" onclick="enterCoach('${esc(p.name)}')">${esc(p.name)}<small>${esc(p.role)}</small></div>`).join('');
+  }).join('') || '<div class="empty">尚無啟用人員，請館長先建立名單</div>';
   $('#coachPick').style.display='flex';
 }
 function openAdminLogin(){
