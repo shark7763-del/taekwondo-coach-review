@@ -1982,10 +1982,12 @@ function renderData(){
         <button class="btn btn-gold btn-sm" onclick="exportJSON()">⬇️ 匯出 JSON 備份</button>
         <button class="btn btn-secondary btn-sm" onclick="$('#importFile').click()">⬆️ 匯入 JSON（整包）</button>
         <button class="btn btn-secondary btn-sm" onclick="$('#importClassFile').click()">🏷️ 只匯入班別</button>
+        <button class="btn btn-gold btn-sm" onclick="$('#importPickFile').click()">🧩 選擇性匯入</button>
       </div>
-      <div class="note" style="margin-bottom:10px">「只匯入班別」：上傳另一版的 JSON 備份，只把班別覆蓋過來，其他資料（人員/排班/酬勞/復盤）完全不動。</div>
+      <div class="note" style="margin-bottom:10px">跨版本搬資料：「🧩 選擇性匯入」上傳另一版的 JSON 備份後，可勾選要搬哪些（班別／排班／固定課／人員…），只覆蓋勾選項目，其他完全不動。整包匯入則會覆蓋全部。</div>
       <input type="file" id="importFile" accept=".json" style="display:none" onchange="importJSON(this)">
       <input type="file" id="importClassFile" accept=".json" style="display:none" onchange="importClassesOnly(this)">
+      <input type="file" id="importPickFile" accept=".json" style="display:none" onchange="pickSelectiveImport(this)">
       <div class="btn-row" style="margin-bottom:10px">
         <button class="btn btn-secondary btn-sm" onclick="exportAllCSV()">📄 匯出排班 CSV</button>
         <button class="btn btn-secondary btn-sm" onclick="settleMonth='';exportSalaryCSV()">📄 匯出全部酬勞 CSV</button>
@@ -2032,6 +2034,40 @@ function importClassesOnly(input){
     }catch(err){ toast('匯入失敗：檔案格式錯誤'); }
   };
   r.readAsText(f); input.value='';
+}
+let _pendingImport=null;
+const IMPORT_SECTIONS=[
+  ['classes','班別'],['people','人員'],['weeklyTemplates','固定週課表'],['schedules','排班（月曆班表）'],
+  ['salarySettings','酬勞設定'],['salaryRecords','酬勞紀錄'],['students','學生名單'],
+  ['reviews','復盤紀錄'],['studentRecords','學生追蹤紀錄'],['leaveRequests','請假紀錄'],['substituteRecords','代班紀錄']
+];
+function pickSelectiveImport(input){
+  if(!requirePerm('manageData','匯入限館長使用')){ input.value=''; return; }
+  const f=input.files[0]; if(!f){ return; }
+  const r=new FileReader();
+  r.onload=e=>{
+    try{
+      const d=JSON.parse(e.target.result);
+      _pendingImport = (d.db && typeof d.db==='object') ? d.db : d;
+      openSelectiveImport();
+    }catch(err){ toast('匯入失敗：檔案格式錯誤'); }
+  };
+  r.readAsText(f); input.value='';
+}
+function openSelectiveImport(){
+  const d=_pendingImport||{};
+  const items=IMPORT_SECTIONS.filter(([k])=>Array.isArray(d[k]));
+  if(!items.length){ toast('檔案裡沒有可匯入的資料'); return; }
+  const rows=items.map(([k,label])=>`<label style="display:flex;align-items:center;gap:8px;padding:7px 2px;cursor:pointer"><input type="checkbox" class="imp-chk" value="${k}" style="width:18px;height:18px"> ${label}（${d[k].length} 筆）</label>`).join('');
+  openModal('🧩 選擇性匯入', `<div class="note" style="margin-bottom:8px">勾選要從備份檔覆蓋過來的項目，<b>未勾選的完全不動</b>。</div>${rows}`, [
+    {label:'匯入勾選項目',cls:'btn-primary',fn:()=>{
+      const keys=[...document.querySelectorAll('.imp-chk:checked')].map(c=>c.value);
+      if(!keys.length){ toast('請至少勾選一項'); return; }
+      keys.forEach(k=>{ if(Array.isArray(_pendingImport[k])) DB[k]=_pendingImport[k]; });
+      save(); closeModal(); toast('✅ 已匯入：'+keys.map(k=>(IMPORT_SECTIONS.find(s=>s[0]===k)||[])[1]||k).join('、')); _pendingImport=null; renderTab(CURRENT_TAB);
+    }},
+    {label:'取消',cls:'btn-ghost',fn:()=>{ _pendingImport=null; closeModal(); }}
+  ]);
 }
 function csvCell(v){ v=String(v==null?'':v); return /[",\n]/.test(v)?'"'+v.replace(/"/g,'""')+'"':v; }
 function exportAllCSV(){
