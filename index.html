@@ -174,6 +174,17 @@ body{ background:
   .month-day{ min-height:76px; padding:6px 4px; border-radius:8px; }
   .month-item{ font-size:9px; }
 }
+@media(max-width:520px), (max-height:640px){
+  .overlay{ align-items:flex-start; overflow-y:auto; padding:calc(18px + env(safe-area-inset-top)) 18px calc(24px + env(safe-area-inset-bottom)); }
+  .home-card{ margin:0 auto; }
+  .home-logo{ width:64px; height:64px; font-size:32px; margin-bottom:12px; }
+  .home-title{ font-size:22px; }
+  .home-sub{ margin:10px 0 18px; }
+  .entry-btn{ padding:18px; border-radius:16px; }
+  .name-grid{ gap:9px; }
+  .name-pick{ padding:14px 8px; }
+  .back-link{ margin-top:14px; padding-bottom:8px; }
+}
 
 /* 列表項 */
 .list-item{ background:var(--bg-card-2); border:1px solid var(--border); border-radius:12px; padding:12px; margin-bottom:9px; }
