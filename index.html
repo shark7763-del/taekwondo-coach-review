@@ -871,7 +871,7 @@ function collectStudentTracks(reviewId){
 }
 function renderReview(){
   const s=reviewState.schedId?DB.schedules.find(x=>x.id===reviewState.schedId):null;
-  const classOpts=QUICK_CLASSES.map(c=>`<option ${s&&s.className===c?'selected':''}>${esc(c)}</option>`).join('');
+  const classOpts=DB.classes.map(c=>`<option ${s&&s.className===c.name?'selected':''}>${esc(c.name)}</option>`).join('');
   const peopleOpts=v=>`<option value="">—</option>`+activePeople().map(p=>`<option ${v===p.name?'selected':''}>${esc(p.name)}</option>`).join('');
   $('#panel-c-review').innerHTML=`
   <div class="section"><div class="section-header"><div class="section-title">📝 課後復盤 KPI</div></div>
