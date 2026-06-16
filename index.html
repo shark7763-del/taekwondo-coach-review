@@ -907,12 +907,9 @@ function renderReview(){
       <div id="rv_students"></div>
     </div>
   </div>
-  <div class="section"><div class="section-header"><div class="section-title">📘 備課與教學目標</div></div>
+  <div class="section"><div class="section-header"><div class="section-title">📘 課前準備（選填）</div></div>
     <div class="section-body">
-      <div class="form-row"><label class="form-label">本堂課核心目標（只寫 1-2 個）</label><textarea id="rv_goal" class="form-textarea" placeholder="例：前踢收腳速度、品勢轉身穩定度"></textarea></div>
-      <div class="form-row"><label class="form-label">課前備課重點 / 教法設計</label><textarea id="rv_plan" class="form-textarea" placeholder="例：先示範錯誤動作，再用分解練習修正"></textarea></div>
-      <div class="form-row"><label class="form-label">本堂預計觀察的學生或問題</label><textarea id="rv_focus" class="form-textarea" placeholder="例：新生注意力、黃帶組重心、容易受傷動作"></textarea></div>
-      <div class="form-row"><label class="form-label">上次改善事項是否有延續</label><textarea id="rv_follow" class="form-textarea" placeholder="例：上次說要縮短講解時間，今天用口令+示範控制在 2 分鐘內"></textarea></div>
+      <div class="form-row"><label class="form-label">本堂課目標／怎麼教／要觀察的學生</label><textarea id="rv_goal" class="form-textarea" placeholder="可留白。例：出腳加速度；示範跳動加速度踢擊；觀察黃帶組重心、容易受傷動作"></textarea></div>
     </div>
   </div>
   <div class="section"><div class="section-header"><div class="section-title">🛡️ 六維能力評分</div></div><div class="section-body" id="rv_six"></div></div>
@@ -920,10 +917,6 @@ function renderReview(){
     <div class="section-body">
       <div class="section-hint">自評不是為了扣分，是讓教練每天誠實看見自己的課前、課中、課後狀態。</div>
       <div id="rv_self"></div>
-      <div class="form-row"><label class="form-label">課前準備自評說明</label><textarea id="rv_prep_note" class="form-textarea" placeholder="今天是否有先想好目標、流程、重點提醒？"></textarea></div>
-      <div class="form-row"><label class="form-label">準時與課前狀態說明</label><textarea id="rv_punctual_note" class="form-textarea" placeholder="是否提前到場？器材、場地、學生集合是否準備好？"></textarea></div>
-      <div class="form-row"><label class="form-label">上課態度自評說明</label><textarea id="rv_attitude_note" class="form-textarea" placeholder="今天是否有耐心、精神、尊重學生、保持標準？"></textarea></div>
-      <div class="form-row"><label class="form-label">課後反思自評說明</label><textarea id="rv_reflection_note" class="form-textarea" placeholder="課後是否有看見問題、提出修正、準備下次改法？"></textarea></div>
     </div>
   </div>
   <div class="section"><div class="section-header"><div class="section-title">⭐ 今日課程品質</div></div>
@@ -940,8 +933,9 @@ function renderReview(){
       <div class="radar-wrap"><svg id="rv_radar" viewBox="0 0 320 300"></svg></div>
     </div>
   </div>
-  <div class="section"><div class="section-header"><div class="section-title">🗒️ 課後檢討</div></div>
+  <div class="section"><div class="section-header"><div class="section-title">🗒️ 課後檢討（皆可留白）</div></div>
     <div class="section-body">
+      <div class="section-hint">想到什麼寫什麼，欄位全部可留白，不會擋儲存。</div>
       <div class="form-row"><label class="form-label">今日最成功的一件事 ✅</label><textarea id="rv_best" class="form-textarea"></textarea></div>
       <div class="form-row"><label class="form-label">今日最需要改善的一件事 ⚠️</label><textarea id="rv_worst" class="form-textarea"></textarea></div>
       <div class="form-row"><label class="form-label">具體證據 📌（你怎麼看出來的：學生反應 / 動作變化 / 課堂狀況）</label><textarea id="rv_evidence" class="form-textarea" placeholder="例：分組後等待時間變短；3 位學生能自己說出修正點"></textarea></div>
@@ -1033,8 +1027,7 @@ function reviewReport(){
   L.push(`整體表現 ${q.overall}/5（${g} 級）　課程品質 ${total}/5`);
   L.push(SIX.map((n,i)=>`${n} ${sc[i]}`).join('｜'));
 
-  const pre=[['核心目標','rv_goal'],['備課重點','rv_plan'],['預計觀察','rv_focus'],['上次延續','rv_follow']].filter(([,id])=>v(id));
-  if(pre.length){ L.push('', '▎課前設計'); pre.forEach(([lab,id])=>L.push(`${lab}：${v(id)}`)); }
+  if(v('rv_goal')){ L.push('', '▎課前準備', v('rv_goal')); }
 
   L.push('', '▎課後檢討');
   L.push(`✅ 今日最成功：${v('rv_best')||'—'}`);
@@ -1144,20 +1137,7 @@ function shareAIParent(){
   shareLine(el.textContent);
 }
 function saveReview(){
-  const required=[
-    ['rv_goal','請填寫本堂課核心目標'],
-    ['rv_plan','請填寫課前備課重點'],
-    ['rv_content','請填寫今日上課內容'],
-    ['rv_prep_note','請填寫課前準備自評說明'],
-    ['rv_punctual_note','請填寫準時與課前狀態說明'],
-    ['rv_attitude_note','請填寫上課態度自評說明'],
-    ['rv_reflection_note','請填寫課後反思自評說明'],
-    ['rv_best','請填寫今日最成功的一件事'],
-    ['rv_worst','請填寫最需要改善的一件事'],
-    ['rv_evidence','請填寫具體證據'],
-    ['rv_next','請填寫下次只改一件事'],
-    ['rv_metric','請填寫下次量化追蹤指標']
-  ];
+  const required=[];
   if(!reviewState.topics.length){ toast('請至少選擇一個今日課程主題'); return; }
   for(const [id,msg] of required){ if(!$('#'+id).value.trim()){ toast(msg); $('#'+id).focus(); return; } }
   const reviewId=uid();
@@ -1168,14 +1148,9 @@ function saveReview(){
     count:$('#rv_count').value, content:$('#rv_content').value, topics:[...reviewState.topics], quick:Object.assign({},reviewState.quick),
     special:$('#rv_special').value,
     scores:[...reviewState.scores], quality:reviewState.quality,
-    self:Object.assign({},reviewState.self), selfNotes:{
-      prep:$('#rv_prep_note').value,
-      punctual:$('#rv_punctual_note').value,
-      attitude:$('#rv_attitude_note').value,
-      reflection:$('#rv_reflection_note').value
-    },
+    self:Object.assign({},reviewState.self),
     total:+$('#rv_total').textContent, grade:$('#rv_grade').textContent,
-    goal:$('#rv_goal').value, plan:$('#rv_plan').value, focus:$('#rv_focus').value, follow:$('#rv_follow').value,
+    goal:$('#rv_goal').value,
     best:$('#rv_best').value, worst:$('#rv_worst').value, evidence:$('#rv_evidence').value,
     next:$('#rv_next').value, metric:$('#rv_metric').value,
     support:$('#rv_support').value, parentReport:parentText, aiParentReport:aiText, ts:Date.now() };
