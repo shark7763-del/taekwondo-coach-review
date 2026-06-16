@@ -1980,9 +1980,12 @@ function renderData(){
       <div class="note">資料儲存於此瀏覽器（localStorage）。建議定期匯出 JSON 備份。</div>
       <div class="btn-row" style="margin-bottom:10px">
         <button class="btn btn-gold btn-sm" onclick="exportJSON()">⬇️ 匯出 JSON 備份</button>
-        <button class="btn btn-secondary btn-sm" onclick="$('#importFile').click()">⬆️ 匯入 JSON</button>
+        <button class="btn btn-secondary btn-sm" onclick="$('#importFile').click()">⬆️ 匯入 JSON（整包）</button>
+        <button class="btn btn-secondary btn-sm" onclick="$('#importClassFile').click()">🏷️ 只匯入班別</button>
       </div>
+      <div class="note" style="margin-bottom:10px">「只匯入班別」：上傳另一版的 JSON 備份，只把班別覆蓋過來，其他資料（人員/排班/酬勞/復盤）完全不動。</div>
       <input type="file" id="importFile" accept=".json" style="display:none" onchange="importJSON(this)">
+      <input type="file" id="importClassFile" accept=".json" style="display:none" onchange="importClassesOnly(this)">
       <div class="btn-row" style="margin-bottom:10px">
         <button class="btn btn-secondary btn-sm" onclick="exportAllCSV()">📄 匯出排班 CSV</button>
         <button class="btn btn-secondary btn-sm" onclick="settleMonth='';exportSalaryCSV()">📄 匯出全部酬勞 CSV</button>
@@ -2011,6 +2014,23 @@ function importJSON(input){
   const r=new FileReader();
   r.onload=e=>{ try{ const d=JSON.parse(e.target.result); DB=Object.assign(defaultDB(),d); save(); toast('✅ 匯入成功'); renderTab(CURRENT_TAB); }
     catch(err){ toast('匯入失敗：檔案格式錯誤'); } };
+  r.readAsText(f); input.value='';
+}
+function importClassesOnly(input){
+  if(!requirePerm('manageData','匯入班別限館長使用')){ input.value=''; return; }
+  const f=input.files[0]; if(!f){ return; }
+  const r=new FileReader();
+  r.onload=e=>{
+    try{
+      const d=JSON.parse(e.target.result);
+      const cls=Array.isArray(d.classes)?d.classes:(d.db&&Array.isArray(d.db.classes)?d.db.classes:null);
+      if(!cls||!cls.length){ toast('檔案裡找不到班別資料'); return; }
+      confirmBox(`將以備份檔的 ${cls.length} 個班別覆蓋目前班別設定（其他資料不變）。`,()=>{
+        DB.classes=cls.map(c=>({ id:c.id||uid(), name:String(c.name||'').trim(), start:c.start||'', end:c.end||'', mainCoach:c.mainCoach||'', assistantCount:+c.assistantCount||0, note:c.note||'' })).filter(c=>c.name);
+        save(); toast('✅ 已匯入 '+DB.classes.length+' 個班別'); renderTab(CURRENT_TAB);
+      });
+    }catch(err){ toast('匯入失敗：檔案格式錯誤'); }
+  };
   r.readAsText(f); input.value='';
 }
 function csvCell(v){ v=String(v==null?'':v); return /[",\n]/.test(v)?'"'+v.replace(/"/g,'""')+'"':v; }
