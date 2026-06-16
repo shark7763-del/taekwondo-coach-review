@@ -837,12 +837,12 @@ function addStudentTrackRow(data){
   const idx=reviewState.studentRows.length;
   reviewState.studentRows.push(data||{});
   const wrap=$('#rv_students'); if(!wrap) return;
-  const studentOpts=activeStudents().map(s=>`<option ${data&&data.studentName===s.name?'selected':''}>${esc(s.name)}</option>`).join('');
+  const studentOpts=activeStudents().map(s=>`<option value="${esc(s.name)}"></option>`).join('');
   wrap.insertAdjacentHTML('beforeend', `
     <div class="list-item" id="rv_stu_${idx}">
       <div class="li-top"><div class="li-name">學生個別追蹤 #${idx+1}</div><button class="icon-btn del" onclick="removeStudentTrackRow(${idx})">×</button></div>
       <div class="form-grid" style="margin-top:10px">
-        <div class="form-row"><label class="form-label">學生姓名</label><select class="form-select stu-name"><option value="">—</option>${studentOpts}</select></div>
+        <div class="form-row"><label class="form-label">學生姓名</label><input class="form-input stu-name" list="stu_dl_${idx}" value="${data&&data.studentName?esc(data.studentName):''}" placeholder="輸入或選擇姓名" autocomplete="off"><datalist id="stu_dl_${idx}">${studentOpts}</datalist></div>
         <div class="form-row"><label class="form-label">今日表現</label><select class="form-select stu-perf">${STUDENT_PERF.map(x=>`<option ${data&&data.performance===x?'selected':''}>${x}</option>`).join('')}</select></div>
       </div>
       <div class="form-grid">
