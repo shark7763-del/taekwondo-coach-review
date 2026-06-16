@@ -44,6 +44,7 @@ body{ background:
 .home-spirit{ margin-top:18px; font-size:11px; letter-spacing:4px; color:var(--accent-deep); }
 .back-link{ display:inline-block; margin-top:16px; font-size:12px; color:var(--text-dim); cursor:pointer; }
 .name-grid{ display:grid; grid-template-columns:1fr 1fr; gap:10px; margin-top:6px; }
+.name-grid .span2{ grid-column:1 / -1; }
 .name-pick{ padding:16px 10px; border:1px solid var(--border); border-radius:13px; background:var(--bg-card-2);
   font-size:15px; font-weight:700; cursor:pointer; transition:.12s; }
 .name-pick:active{ transform:scale(.97); border-color:var(--accent); }
@@ -480,8 +481,9 @@ function renderHomePreview(){
 }
 function openCoachPick(){
   $('#homeScreen').style.display='none';
-  $('#coachPickGrid').innerHTML = activePeople().map(p=>
-    `<div class="name-pick" onclick="enterCoach('${esc(p.name)}')">${esc(p.name)}<small>${esc(p.role)}</small></div>`).join('')
+  const coachRank=role=>({'館長':0,'主教練':0,'次教練':1,'助教':2})[role]??3;
+  $('#coachPickGrid').innerHTML = [...activePeople()].sort((a,b)=>coachRank(a.role)-coachRank(b.role)).map(p=>
+    `<div class="name-pick${coachRank(p.role)===0?' span2':''}" onclick="enterCoach('${esc(p.name)}')">${esc(p.name)}<small>${esc(p.role)}</small></div>`).join('')
     || '<div class="empty">尚無啟用人員，請館長先建立名單</div>';
   $('#coachPick').style.display='flex';
 }
