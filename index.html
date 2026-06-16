@@ -841,7 +841,12 @@ function addStudentTrackRow(data){
       <div class="li-top"><div class="li-name">學生個別追蹤 #${idx+1}</div><button class="icon-btn del" onclick="removeStudentTrackRow(${idx})">×</button></div>
       <div class="form-grid" style="margin-top:10px">
         <div class="form-row"><label class="form-label">學生姓名</label><select class="form-select stu-name"><option value="">—</option>${studentOpts}</select></div>
-        <div class="form-row"><label class="form-label">今日表現</label><select class="form-select stu-perf">${STUDENT_PERF.map(x=>`<option>${x}</option>`).join('')}</select></div>
+        <div class="form-row"><label class="form-label">今日表現</label><select class="form-select stu-perf">${STUDENT_PERF.map(x=>`<option ${data&&data.performance===x?'selected':''}>${x}</option>`).join('')}</select></div>
+      </div>
+      <div class="form-grid">
+        <div class="form-row"><label class="form-label">今天用什麼方法 🛠️</label><input class="form-input stu-method" value="${data&&data.method?esc(data.method):''}" placeholder="例：分組降難度、口訣帶動作、一對一示範"></div>
+        <div class="form-row"><label class="form-label">成效 📈</label><select class="form-select stu-effect">${['—','有效','部分有效','無效','待觀察'].map(x=>`<option ${data&&data.effect===x?'selected':''}>${x}</option>`).join('')}</select></div>
+        <div class="form-row"><label class="form-label">⭐ 需要關注</label><select class="form-select stu-watch">${['否','是'].map(x=>`<option ${data&&(data.needAttention?'是':'否')===x?'selected':''}>${x}</option>`).join('')}</select></div>
       </div>
       <div class="form-grid">
         <div class="form-row"><label class="form-label">技術問題</label><input class="form-input stu-tech" placeholder="例：收腳、重心、轉身"></div>
@@ -860,6 +865,9 @@ function collectStudentTracks(reviewId){
     date:$('#rv_date').value, className:$('#rv_class').value, coach:$('#rv_coach').value,
     studentName:el.querySelector('.stu-name')?.value||'',
     performance:el.querySelector('.stu-perf')?.value||'',
+    method:el.querySelector('.stu-method')?.value||'',
+    effect:el.querySelector('.stu-effect')?.value||'',
+    needAttention:(el.querySelector('.stu-watch')?.value||'否')==='是',
     techIssue:el.querySelector('.stu-tech')?.value||'',
     attitudeIssue:el.querySelector('.stu-att')?.value||'',
     focusIssue:el.querySelector('.stu-focus')?.value||'',
@@ -1217,7 +1225,7 @@ function courseReviewStats(){
   const byClass={}; reviews.forEach(r=>{ (byClass[r.className]=byClass[r.className]||[]).push(+r.total||0); });
   const problemText=reviews.flatMap(r=>[r.worst,r.evidence,r.special].filter(Boolean).join(' ').split(/[，,、\s]+/)).filter(x=>x&&x.length>1);
   const problems={}; problemText.forEach(w=>{ problems[w]=(problems[w]||0)+1; });
-  const concern=(DB.studentRecords||[]).filter(r=>r.performance==='需提醒'||r.notifyParent||r.techIssue||r.attitudeIssue||r.focusIssue).slice(-8).reverse();
+  const concern=(DB.studentRecords||[]).filter(r=>r.needAttention||r.performance==='需提醒'||r.notifyParent||r.techIssue||r.attitudeIssue||r.focusIssue).slice(-8).reverse();
   const reviewedKeys=new Set(reviews.map(r=>`${r.date}|${r.className}|${r.coach}`));
   const missing=weekLessons.filter(s=>s.mainCoach&&!reviewedKeys.has(`${s.date}|${s.className}|${s.mainCoach}`));
   return {todayReviews,weekReviews,weekLessons,byCoach,byClass,problems,concern,missing};
@@ -1256,7 +1264,7 @@ function renderDash(){
       <div class="list-item"><div class="li-name">各教練填寫次數</div><div class="li-sub">${coachRank.map(n=>`${esc(n)} ${stats.byCoach[n]}筆`).join('｜')||'尚無資料'}</div></div>
       <div class="list-item"><div class="li-name">各班級平均分數</div><div class="li-sub">${classAvg.map(x=>`${esc(x[0])} ${x[1].toFixed(1)}`).join('｜')||'尚無資料'}</div></div>
       <div class="list-item"><div class="li-name">常見問題排行</div><div class="li-sub">${problemRank.map(w=>`${esc(w)}(${stats.problems[w]})`).join('｜')||'尚無資料'}</div></div>
-      <div class="list-item"><div class="li-name">學生需關注名單</div><div class="li-sub">${stats.concern.map(r=>`${esc(r.studentName)}：${esc(r.nextReminder||r.techIssue||r.attitudeIssue||r.focusIssue||'需追蹤')}`).join('｜')||'尚無資料'}</div></div>
+      <div class="list-item"><div class="li-name">學生需關注名單</div><div class="li-sub">${stats.concern.map(r=>`${r.needAttention?'⭐':''}${esc(r.studentName)}：${esc(r.nextReminder||r.techIssue||r.attitudeIssue||r.focusIssue||(r.needAttention?'教練標記需關注':'需追蹤'))}${r.method?'（方法：'+esc(r.method)+(r.effect&&r.effect!=='—'?' → '+esc(r.effect):'')+'）':''}`).join('｜')||'尚無資料'}</div></div>
       <div class="list-item"><div class="li-name">未填寫課後復盤提醒</div><div class="li-sub">${stats.missing.slice(0,8).map(s=>`${esc(s.date)} ${esc(s.className)} ${esc(s.mainCoach)}`).join('｜')||'本週目前無缺漏'}</div></div>
     </div>
   </div>
