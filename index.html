@@ -959,12 +959,18 @@ function renderReview(){
       <div id="rv_ai_parent" class="result" style="margin-top:10px">按「AI 統整」後，會產生給家長群的今日訓練狀況。</div>
     </div>
   </div>
-  <div class="section"><div class="section-header"><div class="section-title">💾 儲存與 LINE</div></div>
+  <div class="section"><div class="section-header"><div class="section-title">💾 儲存與分享</div></div>
     <div class="section-body">
-      <button class="btn btn-primary btn-block" onclick="saveReview()" style="margin-bottom:10px">💾 儲存復盤紀錄</button>
-      <div class="btns2">
-        <button class="btn btn-secondary btn-sm" onclick="copyReview()">📋 複製復盤</button>
-        <button class="btn btn-line btn-sm" onclick="shareLine($('#rv_ai_parent')?.textContent && !$('#rv_ai_parent').textContent.startsWith('按') ? $('#rv_ai_parent').textContent : reviewReport())">💬 LINE 分享</button>
+      <button class="btn btn-primary btn-block" onclick="saveReview()" style="margin-bottom:12px">💾 儲存復盤紀錄</button>
+      <div class="section-hint">📒 <b>完整版</b>：給自己／館長存檔，含 KPI、證據、學生方法與成效</div>
+      <div class="btns2" style="margin:6px 0 12px">
+        <button class="btn btn-secondary btn-sm" onclick="copyReview()">📋 複製完整版</button>
+        <button class="btn btn-line btn-sm" onclick="shareLine(reviewReport())">💬 LINE 完整版</button>
+      </div>
+      <div class="section-hint">👨‍👩‍👧 <b>家長版</b>：給家長群，溫和簡短（需先按上方「✨ AI 統整」）</div>
+      <div class="btns2" style="margin-top:6px">
+        <button class="btn btn-secondary btn-sm" onclick="copyAIParentSummary()">📋 複製家長版</button>
+        <button class="btn btn-line btn-sm" onclick="shareAIParent()">💬 LINE 家長版</button>
       </div>
       <div id="rv_report" class="result" style="margin-top:10px">填完後按儲存產生回報內容。</div>
     </div>
@@ -1125,7 +1131,15 @@ function generateAIParentSummary(){
 function copyAIParentSummary(){
   const el=$('#rv_ai_parent');
   if(!el || !el.textContent || el.textContent.startsWith('按')) generateAIParentSummary();
-  copyText($('#rv_ai_parent').textContent);
+  if(!el || !el.textContent || el.textContent.startsWith('按')) return;
+  copyText(el.textContent);
+}
+function shareAIParent(){
+  const el=$('#rv_ai_parent');
+  if(!el) return;
+  if(!el.textContent || el.textContent.startsWith('按')) generateAIParentSummary();
+  if(!el.textContent || el.textContent.startsWith('按')) return;
+  shareLine(el.textContent);
 }
 function saveReview(){
   const required=[
