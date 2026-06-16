@@ -1007,21 +1007,52 @@ function drawRadar(){
   svg.innerHTML=g;
 }
 function reviewReport(){
-  const coach=$('#rv_coach').value, date=$('#rv_date').value, cls=$('#rv_class').value;
-  const total=$('#rv_total').textContent, g=$('#rv_grade').textContent;
-  return `【雄麒道館課後回報】
-日期：${date}（${weekdayOf(date)}）
-班別：${cls}
-教練：${coach}
+  const v=id=>($('#'+id)?.value||'').trim();
+  const date=$('#rv_date').value;
+  const q=reviewState.quick, sc=reviewState.scores;
+  const total=$('#rv_total')?.textContent||'', g=$('#rv_grade')?.textContent||'';
+  const L=[];
+  L.push('【雄麒道館課後復盤｜完整紀錄】');
+  L.push(`日期：${date}（${weekdayOf(date)}）`);
+  L.push(`班別：${v('rv_class')}　教練：${v('rv_coach')}`+(v('rv_assistant')?`　助教：${v('rv_assistant')}`:''));
+  L.push(`學生人數：${v('rv_count')||'—'}`);
 
-今日訓練主題：${reviewState.topics.join('、')||'—'}
-整體表現：${reviewState.quick.overall}/5（${g} 級）
-今日亮點：${$('#rv_best').value||'孩子們今天都有完成重點練習。'}
-需要加強：${$('#rv_worst').value||'下次會持續提醒動作細節與專注度。'}
-下次目標：${$('#rv_next').value||'穩定完成今天的訓練重點。'}
-特殊狀況：${$('#rv_special').value||'無'}
+  L.push('', '▎今日課程');
+  L.push(`主題：${reviewState.topics.join('、')||'—'}`);
+  if(v('rv_content')) L.push(`內容：${v('rv_content')}`);
 
-雄麒道館和孩子一起進步。`;
+  L.push('', '▎KPI 評分');
+  L.push(`整體表現 ${q.overall}/5（${g} 級）　課程品質 ${total}/5`);
+  L.push(SIX.map((n,i)=>`${n} ${sc[i]}`).join('｜'));
+
+  const pre=[['核心目標','rv_goal'],['備課重點','rv_plan'],['預計觀察','rv_focus'],['上次延續','rv_follow']].filter(([,id])=>v(id));
+  if(pre.length){ L.push('', '▎課前設計'); pre.forEach(([lab,id])=>L.push(`${lab}：${v(id)}`)); }
+
+  L.push('', '▎課後檢討');
+  L.push(`✅ 今日最成功：${v('rv_best')||'—'}`);
+  L.push(`⚠️ 最需改善：${v('rv_worst')||'—'}`);
+  if(v('rv_evidence')) L.push(`📌 具體證據：${v('rv_evidence')}`);
+  L.push(`🎯 下次只改一件事：${v('rv_next')||'—'}`);
+  if(v('rv_metric')) L.push(`📊 量化追蹤指標：${v('rv_metric')}`);
+  L.push(`⛑️ 受傷/特殊狀況：${v('rv_special')||'無'}`);
+  if(v('rv_support')&&v('rv_support')!=='不需要') L.push(`🙋 需要協助：${v('rv_support')}`);
+
+  const studs=collectStudentTracks('report');
+  if(studs.length){
+    L.push('', `▎學生個別追蹤（${studs.length} 位）`);
+    studs.forEach((r,i)=>{
+      const tags=[r.needAttention?'⭐需關注':'', r.notifyParent?'📨通知家長':''].filter(Boolean).join(' ');
+      L.push(`${i+1}. ${r.studentName}　${r.performance}`+(tags?'　'+tags:''));
+      if(r.method||(r.effect&&r.effect!=='—')) L.push(`　方法：${r.method||'—'}`+((r.effect&&r.effect!=='—')?`　→ 成效：${r.effect}`:''));
+      const issues=[r.techIssue&&`技術:${r.techIssue}`, r.attitudeIssue&&`態度:${r.attitudeIssue}`, r.focusIssue&&`專注:${r.focusIssue}`].filter(Boolean).join('；');
+      if(issues) L.push(`　問題：${issues}`);
+      if(r.nextReminder) L.push(`　下次提醒：${r.nextReminder}`);
+      if(r.note) L.push(`　備註：${r.note}`);
+    });
+  }
+
+  L.push('', '雄麒道館 課後復盤完整紀錄');
+  return L.join('\n');
 }
 function splitWords(text){
   return String(text||'').split(/[，,、\n\s/]+/).map(s=>s.trim()).filter(Boolean);
