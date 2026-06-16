@@ -841,7 +841,12 @@ function addStudentTrackRow(data){
       <div class="li-top"><div class="li-name">學生個別追蹤 #${idx+1}</div><button class="icon-btn del" onclick="removeStudentTrackRow(${idx})">×</button></div>
       <div class="form-grid" style="margin-top:10px">
         <div class="form-row"><label class="form-label">學生姓名</label><select class="form-select stu-name"><option value="">—</option>${studentOpts}</select></div>
-        <div class="form-row"><label class="form-label">今日表現</label><select class="form-select stu-perf">${STUDENT_PERF.map(x=>`<option>${x}</option>`).join('')}</select></div>
+        <div class="form-row"><label class="form-label">今日表現</label><select class="form-select stu-perf">${STUDENT_PERF.map(x=>`<option ${data&&data.performance===x?'selected':''}>${x}</option>`).join('')}</select></div>
+      </div>
+      <div class="form-grid">
+        <div class="form-row"><label class="form-label">今天用什麼方法 🛠️</label><input class="form-input stu-method" value="${data&&data.method?esc(data.method):''}" placeholder="例：分組降難度、口訣帶動作、一對一示範"></div>
+        <div class="form-row"><label class="form-label">成效 📈</label><select class="form-select stu-effect">${['—','有效','部分有效','無效','待觀察'].map(x=>`<option ${data&&data.effect===x?'selected':''}>${x}</option>`).join('')}</select></div>
+        <div class="form-row"><label class="form-label">⭐ 需要關注</label><select class="form-select stu-watch">${['否','是'].map(x=>`<option ${data&&(data.needAttention?'是':'否')===x?'selected':''}>${x}</option>`).join('')}</select></div>
       </div>
       <div class="form-grid">
         <div class="form-row"><label class="form-label">技術問題</label><input class="form-input stu-tech" placeholder="例：收腳、重心、轉身"></div>
@@ -860,6 +865,9 @@ function collectStudentTracks(reviewId){
     date:$('#rv_date').value, className:$('#rv_class').value, coach:$('#rv_coach').value,
     studentName:el.querySelector('.stu-name')?.value||'',
     performance:el.querySelector('.stu-perf')?.value||'',
+    method:el.querySelector('.stu-method')?.value||'',
+    effect:el.querySelector('.stu-effect')?.value||'',
+    needAttention:(el.querySelector('.stu-watch')?.value||'否')==='是',
     techIssue:el.querySelector('.stu-tech')?.value||'',
     attitudeIssue:el.querySelector('.stu-att')?.value||'',
     focusIssue:el.querySelector('.stu-focus')?.value||'',
@@ -871,7 +879,7 @@ function collectStudentTracks(reviewId){
 }
 function renderReview(){
   const s=reviewState.schedId?DB.schedules.find(x=>x.id===reviewState.schedId):null;
-  const classOpts=QUICK_CLASSES.map(c=>`<option ${s&&s.className===c?'selected':''}>${esc(c)}</option>`).join('');
+  const classOpts=DB.classes.map(c=>`<option ${s&&s.className===c.name?'selected':''}>${esc(c.name)}</option>`).join('');
   const peopleOpts=v=>`<option value="">—</option>`+activePeople().map(p=>`<option ${v===p.name?'selected':''}>${esc(p.name)}</option>`).join('');
   $('#panel-c-review').innerHTML=`
   <div class="section"><div class="section-header"><div class="section-title">📝 課後復盤 KPI</div></div>
@@ -933,13 +941,11 @@ function renderReview(){
   <div class="section"><div class="section-header"><div class="section-title">🗒️ 課後檢討</div></div>
     <div class="section-body">
       <div class="form-row"><label class="form-label">今日最成功的一件事 ✅</label><textarea id="rv_best" class="form-textarea"></textarea></div>
-      <div class="form-row"><label class="form-label">最需要改善的一件事 ⚠️</label><textarea id="rv_worst" class="form-textarea"></textarea></div>
-      <div class="form-row"><label class="form-label">下次課程建議</label><textarea id="rv_course_next" class="form-textarea" placeholder="下次課程可以怎麼安排"></textarea></div>
-      <div class="form-row"><label class="form-label">是否有受傷或特殊狀況</label><textarea id="rv_special" class="form-textarea" placeholder="無 / 有，請簡要說明"></textarea></div>
-      <div class="form-row"><label class="form-label">具體證據（學生反應 / 動作變化 / 課堂狀況）</label><textarea id="rv_evidence" class="form-textarea" placeholder="例：分組後等待時間變短；3 位學生能自己說出修正點"></textarea></div>
-      <div class="form-row"><label class="form-label">下次只改一件事 🎯</label><textarea id="rv_next" class="form-textarea"></textarea></div>
-      <div class="form-row"><label class="form-label">下次課備課調整</label><textarea id="rv_next_plan" class="form-textarea" placeholder="例：把熱身改成反應遊戲，接到主課技術"></textarea></div>
-      <div class="form-row"><label class="form-label">下次量化追蹤指標</label><input id="rv_metric" class="form-input" placeholder="例：前踢連續 10 下收腳不落地；講解每段不超過 2 分鐘"></div>
+      <div class="form-row"><label class="form-label">今日最需要改善的一件事 ⚠️</label><textarea id="rv_worst" class="form-textarea"></textarea></div>
+      <div class="form-row"><label class="form-label">具體證據 📌（你怎麼看出來的：學生反應 / 動作變化 / 課堂狀況）</label><textarea id="rv_evidence" class="form-textarea" placeholder="例：分組後等待時間變短；3 位學生能自己說出修正點"></textarea></div>
+      <div class="form-row"><label class="form-label">下次只改一件事＋怎麼做 🎯</label><textarea id="rv_next" class="form-textarea" placeholder="只挑一件最重要的，並寫怎麼做。例：把熱身改成反應遊戲，接到主課技術"></textarea></div>
+      <div class="form-row"><label class="form-label">下次量化追蹤指標 📊</label><input id="rv_metric" class="form-input" placeholder="例：前踢連續 10 下收腳不落地；講解每段不超過 2 分鐘"></div>
+      <div class="form-row"><label class="form-label">受傷 / 特殊狀況 ⛑️</label><textarea id="rv_special" class="form-textarea" placeholder="無 / 有，請簡要說明"></textarea></div>
       <div class="form-row"><label class="form-label">是否需要館長 / 主教練協助</label><select id="rv_support" class="form-select"><option>不需要</option><option>需要觀課</option><option>需要協助設計課表</option><option>需要協助處理學生/家長</option></select></div>
     </div>
   </div>
@@ -953,12 +959,18 @@ function renderReview(){
       <div id="rv_ai_parent" class="result" style="margin-top:10px">按「AI 統整」後，會產生給家長群的今日訓練狀況。</div>
     </div>
   </div>
-  <div class="section"><div class="section-header"><div class="section-title">💾 儲存與 LINE</div></div>
+  <div class="section"><div class="section-header"><div class="section-title">💾 儲存與分享</div></div>
     <div class="section-body">
-      <button class="btn btn-primary btn-block" onclick="saveReview()" style="margin-bottom:10px">💾 儲存復盤紀錄</button>
-      <div class="btns2">
-        <button class="btn btn-secondary btn-sm" onclick="copyReview()">📋 複製復盤</button>
-        <button class="btn btn-line btn-sm" onclick="shareLine($('#rv_ai_parent')?.textContent && !$('#rv_ai_parent').textContent.startsWith('按') ? $('#rv_ai_parent').textContent : reviewReport())">💬 LINE 分享</button>
+      <button class="btn btn-primary btn-block" onclick="saveReview()" style="margin-bottom:12px">💾 儲存復盤紀錄</button>
+      <div class="section-hint">📒 <b>完整版</b>：給自己／館長存檔，含 KPI、證據、學生方法與成效</div>
+      <div class="btns2" style="margin:6px 0 12px">
+        <button class="btn btn-secondary btn-sm" onclick="copyReview()">📋 複製完整版</button>
+        <button class="btn btn-line btn-sm" onclick="shareLine(reviewReport())">💬 LINE 完整版</button>
+      </div>
+      <div class="section-hint">👨‍👩‍👧 <b>家長版</b>：給家長群，溫和簡短（需先按上方「✨ AI 統整」）</div>
+      <div class="btns2" style="margin-top:6px">
+        <button class="btn btn-secondary btn-sm" onclick="copyAIParentSummary()">📋 複製家長版</button>
+        <button class="btn btn-line btn-sm" onclick="shareAIParent()">💬 LINE 家長版</button>
       </div>
       <div id="rv_report" class="result" style="margin-top:10px">填完後按儲存產生回報內容。</div>
     </div>
@@ -1001,21 +1013,52 @@ function drawRadar(){
   svg.innerHTML=g;
 }
 function reviewReport(){
-  const coach=$('#rv_coach').value, date=$('#rv_date').value, cls=$('#rv_class').value;
-  const total=$('#rv_total').textContent, g=$('#rv_grade').textContent;
-  return `【雄麒道館課後回報】
-日期：${date}（${weekdayOf(date)}）
-班別：${cls}
-教練：${coach}
+  const v=id=>($('#'+id)?.value||'').trim();
+  const date=$('#rv_date').value;
+  const q=reviewState.quick, sc=reviewState.scores;
+  const total=$('#rv_total')?.textContent||'', g=$('#rv_grade')?.textContent||'';
+  const L=[];
+  L.push('【雄麒道館課後復盤｜完整紀錄】');
+  L.push(`日期：${date}（${weekdayOf(date)}）`);
+  L.push(`班別：${v('rv_class')}　教練：${v('rv_coach')}`+(v('rv_assistant')?`　助教：${v('rv_assistant')}`:''));
+  L.push(`學生人數：${v('rv_count')||'—'}`);
 
-今日訓練主題：${reviewState.topics.join('、')||'—'}
-整體表現：${reviewState.quick.overall}/5（${g} 級）
-今日亮點：${$('#rv_best').value||'孩子們今天都有完成重點練習。'}
-需要加強：${$('#rv_worst').value||'下次會持續提醒動作細節與專注度。'}
-下次目標：${$('#rv_course_next').value||$('#rv_next').value||'穩定完成今天的訓練重點。'}
-特殊狀況：${$('#rv_special').value||'無'}
+  L.push('', '▎今日課程');
+  L.push(`主題：${reviewState.topics.join('、')||'—'}`);
+  if(v('rv_content')) L.push(`內容：${v('rv_content')}`);
 
-雄麒道館和孩子一起進步。`;
+  L.push('', '▎KPI 評分');
+  L.push(`整體表現 ${q.overall}/5（${g} 級）　課程品質 ${total}/5`);
+  L.push(SIX.map((n,i)=>`${n} ${sc[i]}`).join('｜'));
+
+  const pre=[['核心目標','rv_goal'],['備課重點','rv_plan'],['預計觀察','rv_focus'],['上次延續','rv_follow']].filter(([,id])=>v(id));
+  if(pre.length){ L.push('', '▎課前設計'); pre.forEach(([lab,id])=>L.push(`${lab}：${v(id)}`)); }
+
+  L.push('', '▎課後檢討');
+  L.push(`✅ 今日最成功：${v('rv_best')||'—'}`);
+  L.push(`⚠️ 最需改善：${v('rv_worst')||'—'}`);
+  if(v('rv_evidence')) L.push(`📌 具體證據：${v('rv_evidence')}`);
+  L.push(`🎯 下次只改一件事：${v('rv_next')||'—'}`);
+  if(v('rv_metric')) L.push(`📊 量化追蹤指標：${v('rv_metric')}`);
+  L.push(`⛑️ 受傷/特殊狀況：${v('rv_special')||'無'}`);
+  if(v('rv_support')&&v('rv_support')!=='不需要') L.push(`🙋 需要協助：${v('rv_support')}`);
+
+  const studs=collectStudentTracks('report');
+  if(studs.length){
+    L.push('', `▎學生個別追蹤（${studs.length} 位）`);
+    studs.forEach((r,i)=>{
+      const tags=[r.needAttention?'⭐需關注':'', r.notifyParent?'📨通知家長':''].filter(Boolean).join(' ');
+      L.push(`${i+1}. ${r.studentName}　${r.performance}`+(tags?'　'+tags:''));
+      if(r.method||(r.effect&&r.effect!=='—')) L.push(`　方法：${r.method||'—'}`+((r.effect&&r.effect!=='—')?`　→ 成效：${r.effect}`:''));
+      const issues=[r.techIssue&&`技術:${r.techIssue}`, r.attitudeIssue&&`態度:${r.attitudeIssue}`, r.focusIssue&&`專注:${r.focusIssue}`].filter(Boolean).join('；');
+      if(issues) L.push(`　問題：${issues}`);
+      if(r.nextReminder) L.push(`　下次提醒：${r.nextReminder}`);
+      if(r.note) L.push(`　備註：${r.note}`);
+    });
+  }
+
+  L.push('', '雄麒道館 課後復盤完整紀錄');
+  return L.join('\n');
 }
 function splitWords(text){
   return String(text||'').split(/[，,、\n\s/]+/).map(s=>s.trim()).filter(Boolean);
@@ -1044,7 +1087,7 @@ function aiParentGroupReport(){
   const total=$('#rv_total')?.textContent||'';
   const best=$('#rv_best')?.value.trim()||'孩子們今天能跟上主要訓練節奏，整體投入度穩定。';
   const worst=$('#rv_worst')?.value.trim()||'部分動作細節與專注穩定度還需要持續提醒。';
-  const next=$('#rv_course_next')?.value.trim()||$('#rv_next')?.value.trim()||'下次會持續加強基本動作穩定度與課堂專注。';
+  const next=$('#rv_next')?.value.trim()||'下次會持續加強基本動作穩定度與課堂專注。';
   const evidence=$('#rv_evidence')?.value.trim();
   const special=$('#rv_special')?.value.trim();
   const progressLine=progress
@@ -1088,7 +1131,15 @@ function generateAIParentSummary(){
 function copyAIParentSummary(){
   const el=$('#rv_ai_parent');
   if(!el || !el.textContent || el.textContent.startsWith('按')) generateAIParentSummary();
-  copyText($('#rv_ai_parent').textContent);
+  if(!el || !el.textContent || el.textContent.startsWith('按')) return;
+  copyText(el.textContent);
+}
+function shareAIParent(){
+  const el=$('#rv_ai_parent');
+  if(!el) return;
+  if(!el.textContent || el.textContent.startsWith('按')) generateAIParentSummary();
+  if(!el.textContent || el.textContent.startsWith('按')) return;
+  shareLine(el.textContent);
 }
 function saveReview(){
   const required=[
@@ -1113,7 +1164,7 @@ function saveReview(){
   const studentTracks=collectStudentTracks(reviewId);
   const rec={ id:reviewId, date:$('#rv_date').value, coach:$('#rv_coach').value, assistant:$('#rv_assistant').value, className:$('#rv_class').value,
     count:$('#rv_count').value, content:$('#rv_content').value, topics:[...reviewState.topics], quick:Object.assign({},reviewState.quick),
-    courseNext:$('#rv_course_next').value, special:$('#rv_special').value,
+    special:$('#rv_special').value,
     scores:[...reviewState.scores], quality:reviewState.quality,
     self:Object.assign({},reviewState.self), selfNotes:{
       prep:$('#rv_prep_note').value,
@@ -1124,7 +1175,7 @@ function saveReview(){
     total:+$('#rv_total').textContent, grade:$('#rv_grade').textContent,
     goal:$('#rv_goal').value, plan:$('#rv_plan').value, focus:$('#rv_focus').value, follow:$('#rv_follow').value,
     best:$('#rv_best').value, worst:$('#rv_worst').value, evidence:$('#rv_evidence').value,
-    next:$('#rv_next').value, nextPlan:$('#rv_next_plan').value, metric:$('#rv_metric').value,
+    next:$('#rv_next').value, metric:$('#rv_metric').value,
     support:$('#rv_support').value, parentReport:parentText, aiParentReport:aiText, ts:Date.now() };
   DB.reviews.push(rec); save();
   DB.studentRecords = DB.studentRecords || [];
@@ -1219,7 +1270,7 @@ function courseReviewStats(){
   const byClass={}; reviews.forEach(r=>{ (byClass[r.className]=byClass[r.className]||[]).push(+r.total||0); });
   const problemText=reviews.flatMap(r=>[r.worst,r.evidence,r.special].filter(Boolean).join(' ').split(/[，,、\s]+/)).filter(x=>x&&x.length>1);
   const problems={}; problemText.forEach(w=>{ problems[w]=(problems[w]||0)+1; });
-  const concern=(DB.studentRecords||[]).filter(r=>r.performance==='需提醒'||r.notifyParent||r.techIssue||r.attitudeIssue||r.focusIssue).slice(-8).reverse();
+  const concern=(DB.studentRecords||[]).filter(r=>r.needAttention||r.performance==='需提醒'||r.notifyParent||r.techIssue||r.attitudeIssue||r.focusIssue).slice(-8).reverse();
   const reviewedKeys=new Set(reviews.map(r=>`${r.date}|${r.className}|${r.coach}`));
   const missing=weekLessons.filter(s=>s.mainCoach&&!reviewedKeys.has(`${s.date}|${s.className}|${s.mainCoach}`));
   return {todayReviews,weekReviews,weekLessons,byCoach,byClass,problems,concern,missing};
@@ -1258,7 +1309,7 @@ function renderDash(){
       <div class="list-item"><div class="li-name">各教練填寫次數</div><div class="li-sub">${coachRank.map(n=>`${esc(n)} ${stats.byCoach[n]}筆`).join('｜')||'尚無資料'}</div></div>
       <div class="list-item"><div class="li-name">各班級平均分數</div><div class="li-sub">${classAvg.map(x=>`${esc(x[0])} ${x[1].toFixed(1)}`).join('｜')||'尚無資料'}</div></div>
       <div class="list-item"><div class="li-name">常見問題排行</div><div class="li-sub">${problemRank.map(w=>`${esc(w)}(${stats.problems[w]})`).join('｜')||'尚無資料'}</div></div>
-      <div class="list-item"><div class="li-name">學生需關注名單</div><div class="li-sub">${stats.concern.map(r=>`${esc(r.studentName)}：${esc(r.nextReminder||r.techIssue||r.attitudeIssue||r.focusIssue||'需追蹤')}`).join('｜')||'尚無資料'}</div></div>
+      <div class="list-item"><div class="li-name">學生需關注名單</div><div class="li-sub">${stats.concern.map(r=>`${r.needAttention?'⭐':''}${esc(r.studentName)}：${esc(r.nextReminder||r.techIssue||r.attitudeIssue||r.focusIssue||(r.needAttention?'教練標記需關注':'需追蹤'))}${r.method?'（方法：'+esc(r.method)+(r.effect&&r.effect!=='—'?' → '+esc(r.effect):'')+'）':''}`).join('｜')||'尚無資料'}</div></div>
       <div class="list-item"><div class="li-name">未填寫課後復盤提醒</div><div class="li-sub">${stats.missing.slice(0,8).map(s=>`${esc(s.date)} ${esc(s.className)} ${esc(s.mainCoach)}`).join('｜')||'本週目前無缺漏'}</div></div>
     </div>
   </div>
